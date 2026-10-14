@@ -1,0 +1,56 @@
+{
+  "_comentario": "Copie para config.json e ajuste. Itens marcados PREENCHER dependem de informação que ainda não temos.",
+
+  "liv": {
+    "baseUrl": "https://chat.livtecnologia.com",
+    "idCliente": null,
+    "idInstancias": null,
+    "_nota": "Se null, o script descobre idCliente e canais sozinho a partir do dashboard pós-login."
+  },
+
+  "origens": {
+    "_nota": "PREENCHER: mapa prefixo da frase -> planilha. Prefixos vistos: Pr., Fb., Sb., Wz-, Ia., Form-, Rm3 -",
+    "prefixos": {
+      "Pr": null,
+      "Fb": null,
+      "Sb": null,
+      "Wz": null,
+      "Ia": null,
+      "Form": null,
+      "Rm3": null
+    },
+    "palavrasAdulto": ["adulto", "adultos", "programador", "programação para adulto", "domine ia"],
+    "palavrasKids": ["kids", "criança", "crianças", "filho", "filha", "adolescente"]
+  },
+
+  "naoQuero": {
+    "_nota": "Expressões que sugerem 'Não quero' (disponibilidade, distância, financeiro). Sempre marcadas para conferência.",
+    "padroes": [
+      "n[aã]o posso (esses|nesses|neste|nesse) dias?",
+      "n[aã]o posso agora",
+      "muito longe",
+      "[eé] longe (pra|para) mim",
+      "n[aã]o tenho (interesse|condi[cç][oõ]es|como)",
+      "sem condi[cç][oõ]es",
+      "n[aã]o (consigo|dá|da) pagar",
+      "est[aá] caro",
+      "n[aã]o quero"
+    ]
+  },
+
+  "planilha": {
+    "_nota": "PREENCHER quando a planilha Zap Track estiver compartilhada.",
+    "sheetId": null,
+    "abaAdulto": "Adulto",
+    "abaKids": "Kids",
+    "abaRascunho": "Rascunho",
+    "colunas": { "data": "A", "qualificacao": "B", "status": "C", "nome": "D", "fone": "E", "frase": "F", "email": "G", "resumo": "H" }
+  },
+
+  "ia": {
+    "ativa": false,
+    "modelo": "claude-haiku-5-5",
+    "maxTokens": 600,
+    "enviarTelefone": false
+  }
+}

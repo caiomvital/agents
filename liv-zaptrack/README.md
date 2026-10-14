@@ -1,0 +1,64 @@
+# liv-zaptrack
+
+Automatiza a parte repetitiva do passo a passo "Análise Liv → Zap Track": lê os leads novos na Liv
+**somente em modo leitura**, abre a conversa de cada um e gera um **rascunho** com as colunas da planilha
+(Data, Qualificação, Status, Nome, Fone, Frase, E-mail, Resumo), marcando o que precisa de olho humano.
+
+> Nada é lançado nas abas Adulto/Kids. O resultado é um CSV (ou, se habilitado, uma aba de rascunho).
+
+## Como funciona
+
+1. Lê o que já está na planilha (CSV exportado, ou Google Sheets) e acha de onde continuar.
+2. Entra na Liv, lista os atendimentos **dia a dia** (a Liv corta em 100 linhas) — equivalente a "Últimos Protocolos".
+3. Mapeia protocolo → id interno pela grade de Históricos e lê a conversa — equivalente a "Históricos → Acessar Histórico".
+4. Aplica as regras do passo a passo (frase, origem, Adulto/Kids, status, gênero, qualificação).
+5. Grava `out/rascunho-<de>_<ate>.csv`. Linhas com `Revisar = SIM` pedem conferência.
+
+### Garantias de somente leitura
+- Depois do login, o navegador **bloqueia toda requisição que não seja GET**, exceto a paginação das grades de
+  Históricos (consultas da própria grade). Não há cliques em botões de ação, formulários nem avaliações (estrelas).
+- Não abre o chat ao vivo, então não marca conversa como lida nem assume atendimento.
+- Se a Liv avisar "usuário já conectado em outra sessão", o script **para** (não derruba ninguém), a menos que
+  `LIV_ALLOW_SESSION_TAKEOVER=1`.
+- Ao terminar, tenta sair da Liv para liberar a sessão.
+
+## Uso
+
+```bash
+npm install
+npx playwright install chromium      # ou defina CHROMIUM_PATH
+cp config.example.json config.json   # e ajuste (veja "O que falta preencher")
+
+export LIV_LOGIN=...  LIV_SENHA=...
+node src/cli.js --de 2026-10-09 --ate 2026-10-13 \
+  --planilha-csv adulto.csv --planilha-csv kids.csv
+```
+
+Sem `--de`, começa na última data encontrada na planilha (ou ontem) e vai até hoje. `node src/cli.js --ajuda` lista as opções.
+Testes: `npm test` (sem rede; usa conversas sintéticas).
+
+## Regras implementadas (do passo a passo)
+- **Frase** = primeira mensagem do lead (a Liv grava duplicada; o script remove a duplicata).
+- **Origem**: prefixo (`Pr.`, `Fb.`, `Rm3 -`…) = campanha; saudações → "Saudação"; o resto → "Dúvida".
+- **Status**: `Não interagiu` (lead só enviou a origem), `Agendado` (e-mail + dia + horário), `Não quero` (padrões de
+  texto, **sempre para revisão**), senão `Conversa Iniciada`.
+- **Qualificação**: as quatro regras Adulto/Kids × homem/mulher. Sem gênero ou sem planilha definida, **não chuta**:
+  deixa em branco e marca `Revisar`.
+- **Duplicados**: compara DDD + 8 últimos dígitos do telefone + dia (ignora `55` e o nono dígito).
+
+## O que falta preencher / ainda não testado
+| Item | Situação |
+|---|---|
+| Mapa prefixo → Adulto/Kids (`origens.prefixos`) | **Preencher** em `config.json`. Hoje só há palavras-chave ("adulto", "kids"…). |
+| Usuário exclusivo do robô na Liv (só leitura) | **Criar**. A Liv permite uma sessão por usuário. |
+| Planilha Zap Track | **Compartilhar**. Hoje funciona por CSV exportado; Google Sheets está implementado mas **não testado**. |
+| Gênero | Dicionário inicial em `src/data/nomes.json` (ampliar). Nomes desconhecidos ficam para revisão ou para a IA. |
+| IA (`--ia`) | Implementada, **não testada contra a API real** (sem chave). Desligada por padrão; não envia telefone. |
+| Agendamento (`.github/workflows/zaptrack.yml`) | Só manual. Habilitar `schedule` depois de validar. |
+
+## Segurança e privacidade
+- Credenciais só por variável de ambiente (`LIV_LOGIN`, `LIV_SENHA`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `ANTHROPIC_API_KEY`).
+- `config.json` e `out/` estão no `.gitignore`: o CSV contém nomes e telefones de leads. Não versionar.
+- Com `--ia`, nome e texto da conversa vão para o provedor de IA (telefone não, por padrão). Confirme se isso é aceitável (LGPD).
+- A leitura usa as mesmas URLs que a interface da Liv usa (`blank_ultimos_atendimentos`, `grid_chatbot_historico`).
+  Se a Liv mudar as telas, o script pode quebrar; uma API/webhook oficial seria mais estável.

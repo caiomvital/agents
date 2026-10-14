@@ -1,0 +1,25 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+
+// Colunas na ordem da planilha (A..H), seguidas de colunas auxiliares para conferência humana.
+export const COLUNAS_PLANILHA = ['data', 'qualificacao', 'status', 'nome', 'fone', 'frase', 'email', 'resumo'];
+export const COLUNAS_AUX = ['revisar', 'motivos', 'planilha', 'tipoOrigem', 'genero', 'generoFonte', 'generoConfianca', 'protocolo', 'chegada', 'canal', 'statusLiv'];
+
+const esc = (v) => {
+  const s = String(v ?? '');
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+export function paraCSV(linhas) {
+  const cols = [...COLUNAS_PLANILHA, ...COLUNAS_AUX];
+  const cab = ['Data', 'Qualificação', 'Status', 'Nome', 'Fone', 'Frase', 'E-mail', 'Resumo', 'Revisar', 'Motivos', 'Planilha', 'Origem', 'Gênero', 'Fonte gênero', 'Confiança gênero', 'Protocolo', 'Chegada', 'Canal', 'Status Liv'];
+  return [cab, ...linhas.map((l) => cols.map((c) => (c === 'revisar' ? (l.revisar ? 'SIM' : '') : l[c])))].map((r) => r.map(esc).join(',')).join('\n') + '\n';
+}
+
+export function gravar(caminho, texto) {
+  mkdirSync(dirname(caminho), { recursive: true });
+  writeFileSync(caminho, texto, 'utf8');
+}
+
+/** Linhas para colar/anexar na planilha: só as colunas A..H. */
+export const paraPlanilha = (linhas) => linhas.map((l) => COLUNAS_PLANILHA.map((c) => l[c] ?? ''));
