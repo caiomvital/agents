@@ -20,7 +20,7 @@ Automatiza a parte repetitiva do passo a passo "Análise Liv → Zap Track": lê
 - Não abre o chat ao vivo, então não marca conversa como lida nem assume atendimento.
 - Se a Liv avisar "usuário já conectado em outra sessão", o script **para** (não derruba ninguém), a menos que
   `LIV_ALLOW_SESSION_TAKEOVER=1`.
-- Ao terminar, tenta sair da Liv para liberar a sessão.
+- Ao terminar, sai da Liv para liberar a sessão. Usuários de atendente (não administradores) caem direto na tela de chat após o login; o script sai dela sem interagir e usa `liv.idCliente`/`liv.idInstancias` do `config.json`.
 
 ## Uso
 
@@ -34,7 +34,7 @@ node src/cli.js --de 2026-10-09 --ate 2026-10-13 \
   --planilha-csv adulto.csv --planilha-csv kids.csv
 ```
 
-Sem `--de`, começa na última data encontrada na planilha (ou ontem) e vai até hoje. `node src/cli.js --ajuda` lista as opções.
+`--por-aba` grava também CSVs no layout das abas Adulto (A–H) e Kids (A–N, com a coluna Filho). Sem `--de`, começa na última data encontrada na planilha (ou ontem) e vai até hoje. `node src/cli.js --ajuda` lista as opções.
 Testes: `npm test` (sem rede; usa conversas sintéticas).
 
 ## Regras implementadas (do passo a passo)
@@ -49,7 +49,8 @@ Testes: `npm test` (sem rede; usa conversas sintéticas).
 ## O que falta preencher / ainda não testado
 | Item | Situação |
 |---|---|
-| Mapa prefixo → Adulto/Kids (`origens.prefixos`) | **Preencher** em `config.json`. Hoje só há palavras-chave ("adulto", "kids"…). |
+| Mapa prefixo → Adulto/Kids (`origens.prefixos`) | Preenchido com o que a planilha mostra: `RM3` = Adulto, `RC*` = Kids; genéricos (Fb., Sb., Pr.…) caem em Adulto salvo pista de Kids. Prefixos novos (ex.: `K2-`, `RM2`) entram pelas palavras-chave ou devem ser acrescentados. |
+| Status "Nº interação" | A planilha mistura "Conversa Iniciada" e "1o/2o/3o interação". Padrão: Conversa Iniciada; `status.interacao = "contagem"` troca para a contagem de respostas do lead (regra exata a confirmar). |
 | Usuário exclusivo do robô na Liv (só leitura) | **Criar**. A Liv permite uma sessão por usuário. |
 | Planilha Zap Track | **Compartilhar**. Hoje funciona por CSV exportado; Google Sheets está implementado mas **não testado**. |
 | Gênero | Dicionário inicial em `src/data/nomes.json` (ampliar). Nomes desconhecidos ficam para revisão ou para a IA. |

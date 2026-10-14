@@ -63,8 +63,10 @@ export function classifyOrigin(frase, cfg = {}) {
   let fonte = null;
 
   const mapa = origens.prefixos ?? {};
-  const chave = Object.keys(mapa).find((k) => norm(k) === norm(prefixo ?? ''));
-  if (chave && mapa[chave]) {
+  const pn = norm(prefixo ?? '');
+  const casa = (k) => (k.endsWith('*') ? pn.startsWith(norm(k.slice(0, -1))) : norm(k) === pn);
+  const chave = pn ? Object.keys(mapa).find((k) => mapa[k] && casa(k)) : null;
+  if (chave) {
     planilha = mapa[chave];
     fonte = `prefixo ${chave}`;
   }
@@ -75,6 +77,12 @@ export function classifyOrigin(frase, cfg = {}) {
     const adulto = (origens.palavrasAdulto ?? []).some((w) => t.includes(norm(w)));
     if (kids && !adulto) (planilha = 'Kids'), (fonte = 'palavra-chave');
     else if (adulto && !kids) (planilha = 'Adulto'), (fonte = 'palavra-chave');
+  }
+
+  // Prefixos de anúncio genéricos (Fb., Sb., Pr.…) sem pista de Kids caem na planilha padrão.
+  if (!planilha && prefixo && (origens.genericos ?? []).some((g) => norm(g) === pn)) {
+    planilha = origens.padraoGenerico ?? null;
+    if (planilha) fonte = 'padrão genérico';
   }
 
   let tipo;
@@ -131,8 +139,12 @@ export function classifyStatus(msgs, cfg = {}) {
   }
 
   const parcial = ag.email || ag.dia || ag.horario;
+  // A planilha real mistura "Conversa Iniciada" e "1o/2o/3o interação". O padrão segue o passo a passo
+  // (Conversa Iniciada); com status.interacao = "contagem" usa o número de respostas do lead.
+  const contagem = cfg.status?.interacao === 'contagem';
+  const respostas = lead.length - 1;
   return {
-    status: 'Conversa Iniciada',
+    status: contagem ? `${respostas}o interação` : 'Conversa Iniciada',
     motivo: parcial ? 'agendamento parcial (faltam dados)' : 'lead interagiu com o bot',
     revisar: Boolean(parcial),
     ag,
@@ -197,7 +209,7 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
   let revisar = st.revisar;
 
   let status = st.status;
-  if (ai?.status && ai.status !== status && ['Não quero', 'Agendado', 'Conversa Iniciada', 'Não interagiu'].includes(ai.status)) {
+  if (ai?.status && ai.status !== status && ['Não quero', 'Agendado', 'Conversa Iniciada', 'Não interagiu'].includes(ai.status) && !/interação$/.test(status)) {
     // IA só pode contrariar a regra nos casos subjetivos; regras objetivas (Não interagiu) prevalecem.
     if (st.status !== 'Não interagiu') {
       motivos.push(`IA mudou status ${status}→${ai.status}`);

@@ -45,9 +45,12 @@ export async function connect({ baseUrl, login, password, allowTakeover = false,
     await ok.first().click({ timeout: 5000 });
   }
 
-  await page.waitForURL(/menu\/menu\.php/, { timeout: 30000 });
-  await page.waitForTimeout(5000);
+  // Administradores caem no menu; atendentes caem direto na tela de chat. Nos dois casos já estamos logados.
+  await page.waitForURL(/menu\/menu\.php|blank_chat_v2/, { timeout: 30000, waitUntil: 'commit' });
+  const noChat = /blank_chat_v2/.test(page.url());
+  if (!noChat) await page.waitForTimeout(5000);
   logado = true;
+  if (noChat) log('Usuário de atendente: caiu na tela de chat; saindo dela sem interagir.');
 
   // Descobre cliente e canais pelo dashboard (mesmos parâmetros que a interface usa).
   let ids = null;
@@ -57,13 +60,20 @@ export async function connect({ baseUrl, login, password, allowTakeover = false,
   }
 
   async function close() {
+    // Encerrar a sessão libera o login (e tira o atendente do "online"). Procura o link "Sair" em qualquer quadro.
     try {
-      const menu = page.frames().find((f) => /menu\/menu\.php/.test(f.url()));
-      const sair = menu?.locator('a[href*="login/index.php"]').first();
-      if (sair && (await sair.count())) await sair.evaluate((a) => a.click());
-      await page.waitForTimeout(1500);
+      await page.goto(`${baseUrl}/menu/menu.php`, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      for (const f of page.frames()) {
+        const sair = f.locator('a[href*="login/index.php"]').first();
+        if (await sair.count().catch(() => 0)) {
+          await sair.evaluate((a) => a.click());
+          await page.waitForTimeout(2000);
+          log('Sessão encerrada.');
+          break;
+        }
+      }
     } catch {
-      /* encerrar sessão é só cortesia; o navegador fecha de qualquer forma */
+      /* cortesia: o navegador fecha de qualquer forma */
     }
     await browser.close();
   }

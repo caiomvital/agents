@@ -9,7 +9,7 @@ import { buildRow } from './rules.js';
 import { classificarComIA } from './ai.js';
 import { diasEntre, hojeISO, somaDias } from './dates.js';
 import { chaveDoLead, chavesExistentes, lerCSVs, ultimaData, tokenGoogle, lerAbaGoogle, registrosDaPlanilha, anexarRascunho } from './sheet.js';
-import { gravar, paraCSV, paraPlanilha } from './output.js';
+import { gravar, paraCSV, paraPlanilha, porAba, matrizParaCSV } from './output.js';
 
 const { values: a } = parseArgs({
   options: {
@@ -21,6 +21,7 @@ const { values: a } = parseArgs({
     'escrever-rascunho': { type: 'boolean', default: false },
     ia: { type: 'boolean', default: false },
     'sem-dedupe': { type: 'boolean', default: false },
+    'por-aba': { type: 'boolean', default: false },
     saida: { type: 'string' },
     ajuda: { type: 'boolean', short: 'h', default: false },
   },
@@ -34,6 +35,7 @@ if (a.ajuda) {
   --escrever-rascunho                  anexa o resultado na aba de rascunho (nunca em Adulto/Kids)
   --ia                                 usa a API da Anthropic (ANTHROPIC_API_KEY) nos casos difíceis
   --sem-dedupe                         não descarta leads que já estão na planilha
+  --por-aba                            também grava CSVs no layout das abas Adulto e Kids (colunas A..H / A..N)
   --saida caminho.csv                  arquivo de saída (padrão: out/rascunho-<de>_<ate>.csv)`);
   process.exit(0);
 }
@@ -118,6 +120,14 @@ try {
   gravar(saida, paraCSV(linhas));
   const rev = linhas.filter((l) => l.revisar).length;
   log(`Gravado ${saida}: ${linhas.length} linhas, ${rev} para conferir.`);
+
+  if (a['por-aba']) {
+    const { adulto, kids, indefinidas } = porAba(linhas);
+    const base = saida.replace(/\.csv$/, '');
+    gravar(`${base}-adulto.csv`, matrizParaCSV(adulto));
+    gravar(`${base}-kids.csv`, matrizParaCSV(kids));
+    log(`Por aba: ${adulto.length} Adulto, ${kids.length} Kids, ${indefinidas.length} sem planilha definida (só no CSV principal).`);
+  }
 
   if (a['escrever-rascunho']) {
     const cred = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;

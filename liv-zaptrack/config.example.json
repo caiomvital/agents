@@ -1,28 +1,45 @@
 {
   "_comentario": "Copie para config.json e ajuste. Itens marcados PREENCHER dependem de informação que ainda não temos.",
-
   "liv": {
     "baseUrl": "https://chat.livtecnologia.com",
     "idCliente": null,
     "idInstancias": null,
     "_nota": "Se null, o script descobre idCliente e canais sozinho a partir do dashboard pós-login."
   },
-
   "origens": {
-    "_nota": "PREENCHER: mapa prefixo da frase -> planilha. Prefixos vistos: Pr., Fb., Sb., Wz-, Ia., Form-, Rm3 -",
+    "_nota": "Prefixos vistos na planilha: RM3 (Adulto), RC05/RC08/RC09 (Kids). Genéricos (Fb., Sb., Pr., SF, Bb., Ff., Form) usam palavras-chave e, sem pista de Kids, caem em padraoGenerico. Use * como curinga.",
     "prefixos": {
-      "Pr": null,
-      "Fb": null,
-      "Sb": null,
-      "Wz": null,
-      "Ia": null,
-      "Form": null,
-      "Rm3": null
+      "RM3": "Adulto",
+      "RC*": "Kids"
     },
-    "palavrasAdulto": ["adulto", "adultos", "programador", "programação para adulto", "domine ia"],
-    "palavrasKids": ["kids", "criança", "crianças", "filho", "filha", "adolescente"]
+    "palavrasAdulto": [
+      "adulto",
+      "adultos",
+      "programador",
+      "programação para adulto",
+      "domine ia"
+    ],
+    "palavrasKids": [
+      "kids",
+      "criança",
+      "crianças",
+      "filho",
+      "filha",
+      "adolescente"
+    ],
+    "genericos": [
+      "Fb",
+      "Sb",
+      "Pr",
+      "SF",
+      "Bb",
+      "Ff",
+      "Form",
+      "Ia",
+      "Wz"
+    ],
+    "padraoGenerico": "Adulto"
   },
-
   "naoQuero": {
     "_nota": "Expressões que sugerem 'Não quero' (disponibilidade, distância, financeiro). Sempre marcadas para conferência.",
     "padroes": [
@@ -37,20 +54,31 @@
       "n[aã]o quero"
     ]
   },
-
   "planilha": {
     "_nota": "PREENCHER quando a planilha Zap Track estiver compartilhada.",
     "sheetId": null,
     "abaAdulto": "Adulto",
     "abaKids": "Kids",
     "abaRascunho": "Rascunho",
-    "colunas": { "data": "A", "qualificacao": "B", "status": "C", "nome": "D", "fone": "E", "frase": "F", "email": "G", "resumo": "H" }
+    "colunas": {
+      "data": "A",
+      "qualificacao": "B",
+      "status": "C",
+      "nome": "D",
+      "fone": "E",
+      "frase": "F",
+      "email": "G",
+      "resumo": "H"
+    }
   },
-
   "ia": {
     "ativa": false,
     "modelo": "claude-haiku-5-5",
     "maxTokens": 600,
     "enviarTelefone": false
+  },
+  "status": {
+    "_nota": "A planilha mistura 'Conversa Iniciada' e '1o/2o/3o interação'. 'conversa_iniciada' segue o passo a passo; 'contagem' usa o nº de respostas do lead.",
+    "interacao": "conversa_iniciada"
   }
 }

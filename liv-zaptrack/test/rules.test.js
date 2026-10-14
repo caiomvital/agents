@@ -140,3 +140,28 @@ test('datas: intervalo e fuso de Brasília', () => {
   assert.deepEqual(diasEntre('2026-10-30', '2026-11-02'), ['2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02']);
   assert.equal(hojeISO(new Date('2026-10-14T01:00:00Z')), '2026-10-13');
 });
+
+// ---------- ajustes a partir da planilha real ----------
+const cfg2 = {
+  origens: { prefixos: { RM3: 'Adulto', 'RC*': 'Kids' }, genericos: ['Fb', 'Sb', 'Pr'], padraoGenerico: 'Adulto', palavrasAdulto: ['adulto'], palavrasKids: ['kids', 'adolescente'] },
+  naoQuero: { padroes: [] },
+};
+test('origem: RM3 adulto, RC* kids, genérico com pista de Kids, genérico sem pista cai em Adulto', () => {
+  assert.equal(classifyOrigin('RM3 - Gostaria de conhecer o Curso de Programação para Adultos da Fuctura', cfg2).planilha, 'Adulto');
+  assert.equal(classifyOrigin('RC05- Quero informação sobre Programação Kids', cfg2).planilha, 'Kids');
+  assert.equal(classifyOrigin('RC09- Gostaria de saber mais informações sobre o curso', cfg2).planilha, 'Kids');
+  assert.equal(classifyOrigin('Fb. Gostaria de saber sobre curso de programação Kids', cfg2).planilha, 'Kids');
+  const g = classifyOrigin('Fb. Gostaria de saber sobre curso de programação', cfg2);
+  assert.equal(g.planilha, 'Adulto');
+  assert.equal(g.fonte, 'padrão genérico');
+});
+
+test('status: modo contagem produz "No interação" e o padrão continua Conversa Iniciada', () => {
+  const msgs = [lead('Pr. x'), bot('?'), lead('a', '13/10/2026 10:01:00'), bot('?'), lead('b', '13/10/2026 10:02:00')];
+  assert.equal(classifyStatus(msgs, {}).status, 'Conversa Iniciada');
+  assert.equal(classifyStatus(msgs, { status: { interacao: 'contagem' } }).status, '2o interação');
+});
+
+test('qualificação usa a grafia pedida: Desqualificado', () => {
+  assert.equal(qualify({ planilha: 'Adulto', genero: 'M', status: 'Não interagiu' }).qualificacao, 'Desqualificado');
+});
