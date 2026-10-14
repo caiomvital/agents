@@ -101,7 +101,7 @@ try {
     const id = mapa.get(lead.protocolo);
     if (!id) {
       log(`protocolo ${lead.protocolo}: histórico não localizado (muito antigo?)`);
-      linhas.push({ protocolo: lead.protocolo, chegada: `${lead.data} ${lead.hora}`, data: lead.data, nome: lead.nome, fone: lead.whatsapp, revisar: true, motivos: 'histórico não localizado', canal: lead.canal, statusLiv: lead.status });
+      linhas.push({ protocolo: lead.protocolo, chegada: `${lead.data} ${lead.hora}`, data: lead.data, nome: lead.nome, fone: lead.whatsapp, revisar: true, conferir: '• Histórico da conversa não localizado (muito antigo?)', canal: lead.canal, statusLiv: lead.status });
       continue;
     }
     const msgs = await lerConversa(liv.page, baseUrl, id);
@@ -119,7 +119,7 @@ try {
   const saida = a.saida ?? `out/rascunho-${de}_${ate}.csv`;
   gravar(saida, paraCSV(linhas));
   const rev = linhas.filter((l) => l.revisar).length;
-  log(`Gravado ${saida}: ${linhas.length} linhas, ${rev} para conferir.`);
+  log(`Gravado ${saida}: ${linhas.length} linhas, ${rev} com algo a conferir (coluna Conferir / Erros do Bot).`);
 
   if (a['por-aba']) {
     const { adulto, kids, indefinidas } = porAba(linhas);

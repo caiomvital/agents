@@ -12,7 +12,12 @@ Automatiza a parte repetitiva do passo a passo "Análise Liv → Zap Track": lê
 2. Entra na Liv, lista os atendimentos **dia a dia** (a Liv corta em 100 linhas) — equivalente a "Últimos Protocolos".
 3. Mapeia protocolo → id interno pela grade de Históricos e lê a conversa — equivalente a "Históricos → Acessar Histórico".
 4. Aplica as regras do passo a passo (frase, origem, Adulto/Kids, status, gênero, qualificação).
-5. Grava `out/rascunho-<de>_<ate>.csv`. Linhas com `Revisar = SIM` pedem conferência.
+5. Grava `out/rascunho-<de>_<ate>.csv`. Duas colunas dizem o que olhar em cada linha:
+   - **Conferir:** o que a pessoa precisa checar, em texto claro (ex.: "Agendamento incompleto: falta horário",
+     "Gênero não identificado pelo nome; qualificação não preenchida", "Planilha Kids inferida: …"). Vazio = nada a conferir.
+   - **Erros do Bot:** desvios do bot na conversa (texto-modelo vazado, mensagem repetida, pergunta do lead sem resposta,
+     valor ignorado, e-mail pedido de novo, mais as regras da equipe em `botRegras` do `config.json`).
+   Também preenche **Resumo** e **Filho** a partir da recapitulação do próprio bot e sugere o **Nome** real dado na conversa.
 
 ### Garantias de somente leitura
 - Depois do login, o navegador **bloqueia toda requisição que não seja GET**, exceto a paginação das grades de

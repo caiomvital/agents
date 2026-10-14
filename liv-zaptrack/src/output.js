@@ -3,8 +3,8 @@ import { dirname } from 'node:path';
 
 // Colunas na ordem da planilha (A..H), seguidas de colunas auxiliares para conferência humana.
 export const COLUNAS_PLANILHA = ['data', 'qualificacao', 'status', 'nome', 'fone', 'frase', 'email', 'resumo'];
-export const COLUNAS_AUX = ['revisar', 'errosBot', 'motivos', 'filho', 'nomeSugerido', 'planilha', 'tipoOrigem', 'genero', 'generoFonte', 'generoConfianca', 'protocolo', 'chegada', 'canal', 'statusLiv'];
-export const CABECALHO = ['Data', 'Qualificação', 'Status', 'Nome', 'Fone', 'Frase', 'E-mail', 'Resumo', 'Revisar', 'Erros do Bot', 'Motivos', 'Filho', 'Nome sugerido', 'Planilha', 'Origem', 'Gênero', 'Fonte gênero', 'Confiança gênero', 'Protocolo', 'Chegada', 'Canal', 'Status Liv'];
+export const COLUNAS_AUX = ['conferir', 'errosBot', 'filho', 'nomeSugerido', 'planilha', 'tipoOrigem', 'genero', 'generoFonte', 'generoConfianca', 'protocolo', 'chegada', 'canal', 'statusLiv'];
+export const CABECALHO = ['Data', 'Qualificação', 'Status', 'Nome', 'Fone', 'Frase', 'E-mail', 'Resumo', 'Conferir', 'Erros do Bot', 'Filho', 'Nome sugerido', 'Planilha', 'Origem', 'Gênero', 'Fonte gênero', 'Confiança gênero', 'Protocolo', 'Chegada', 'Canal', 'Status Liv'];
 
 const esc = (v) => {
   const s = String(v ?? '');
@@ -14,7 +14,7 @@ const esc = (v) => {
 export function paraCSV(linhas) {
   const cols = [...COLUNAS_PLANILHA, ...COLUNAS_AUX];
   const cab = CABECALHO;
-  return [cab, ...linhas.map((l) => cols.map((c) => (c === 'revisar' ? (l.revisar ? 'SIM' : '') : l[c])))].map((r) => r.map(esc).join(',')).join('\n') + '\n';
+  return [cab, ...linhas.map((l) => cols.map((c) => l[c]))].map((r) => r.map(esc).join(',')).join('\n') + '\n';
 }
 
 export function gravar(caminho, texto) {

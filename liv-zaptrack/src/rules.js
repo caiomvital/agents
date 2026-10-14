@@ -137,17 +137,18 @@ export function classifyStatus(msgs, cfg = {}) {
   const padroes = (cfg.naoQuero?.padroes ?? []).map((p) => new RegExp(p, 'i'));
   const hit = lead.slice(1).find((m) => padroes.some((re) => re.test(m.text)));
   if (hit) {
-    return { status: 'Não quero', motivo: `trecho: "${hit.text.slice(0, 60)}"`, revisar: true, ag };
+    return { status: 'Não quero', motivo: `Status "Não quero" sugerido pelo texto "${hit.text.replace(/\s+/g, ' ').slice(0, 60)}"; confirmar`, revisar: true, ag };
   }
 
   const parcial = ag.email || ag.dia || ag.horario;
+  const faltam = [!ag.email && 'e-mail', !ag.dia && 'dia', !ag.horario && 'horário'].filter(Boolean);
   // A planilha real mistura "Conversa Iniciada" e "1o/2o/3o interação". O padrão segue o passo a passo
   // (Conversa Iniciada); com status.interacao = "contagem" usa o número de respostas do lead.
   const contagem = cfg.status?.interacao === 'contagem';
   const respostas = lead.length - 1;
   return {
     status: contagem ? `${respostas}o interação` : 'Conversa Iniciada',
-    motivo: parcial ? 'agendamento parcial (faltam dados)' : 'lead interagiu com o bot',
+    motivo: parcial ? `Agendamento incompleto: falta ${faltam.join(', ')}` : 'lead interagiu com o bot',
     revisar: Boolean(parcial),
     ag,
   };
@@ -184,8 +185,8 @@ export function guessGender(nome) {
  *          F qualificada, exceto se só clicou no anúncio -> desqualificada
  */
 export function qualify({ planilha, genero, status }) {
-  if (!planilha) return { qualificacao: '', motivo: 'planilha (Adulto/Kids) indefinida', revisar: true };
-  if (!genero) return { qualificacao: '', motivo: 'gênero indefinido', revisar: true };
+  if (!planilha) return { qualificacao: '', motivo: 'Não deu para definir Adulto ou Kids; qualificação não preenchida', revisar: true };
+  if (!genero) return { qualificacao: '', motivo: 'Gênero não identificado pelo nome; qualificação não preenchida', revisar: true };
   const nao = status === 'Não interagiu';
   const agendou = status === 'Agendado';
   const Q = 'Qualificado';
@@ -199,11 +200,11 @@ export function qualify({ planilha, genero, status }) {
 
 // ---------- resumo do agendamento, aluno e nome real (a partir da recapitulação do bot) ----------
 
-const RECAP = /^(revisando|atualizando)\b/i;
+const RECAP = /\b(revisando|atualizando):/i;
 const temPlaceholder = (t) => /\[[^\]\n]{2,40}\]/.test(t);
 
 function recapitulacao(msgs) {
-  const cand = msgs.filter((m) => RECAP.test(m.text.trim()));
+  const cand = msgs.filter((m) => RECAP.test(m.text));
   const boas = cand.filter((m) => !temPlaceholder(m.text));
   return (boas.at(-1) ?? cand.at(-1))?.text ?? null;
 }
@@ -213,13 +214,13 @@ export function extractResumo(msgs) {
   if (!r) return '';
   return r
     .replace(/\s*\n\s*/g, ' ')
-    .replace(RECAP, '')
+    .replace(/^.*?\b(?:revisando|atualizando):/i, '')
     .replace(/^[:\s-]+/, '')
     .replace(/(?:-\s*)?e-?mail:?\s*[\w.+-]+@[\w.-]+\.\w+,?/gi, '')
     .replace(new RegExp(EMAIL.source, 'g'), '')
     .replace(/\s+-\s+/g, '; ')
     .replace(/,\s*(?=[.,;])/g, '')
-    .replace(/\s*est[aá] tudo certo\??\s*$/i, '')
+    .replace(/\s*est[aá] tudo certo\??.*$/i, '')
     .replace(/\s{2,}/g, ' ')
     .trim();
 }
@@ -229,7 +230,7 @@ const limpoNome = (n) => (n && !/[\[\d]|n[aã]o informado/i.test(n) ? n.trim().r
 export function extractFilho(msgs) {
   const r = recapitulacao(msgs) ?? '';
   const a = r.match(/nome do aluno:\s*(.+?)(?=\s*(?:\n|;|\s-\s|idade\b|$))/i)?.[1];
-  const b = r.match(/^(?:revisando|atualizando):\s*([^,\n]+),\s*\d+\s*anos/i)?.[1];
+  const b = r.match(/(?:revisando|atualizando):\s*([^,\n]+),\s*\d+\s*anos/i)?.[1];
   return limpoNome(a) ?? limpoNome(b) ?? '';
 }
 
@@ -238,7 +239,7 @@ export function extractNomeReal(msgs, contato = '') {
   const r = recapitulacao(msgs) ?? '';
   const cand =
     r.match(/respons[aá]vel:\s*(.+?)(?=\s*(?:\n|;|,|\s-\s|e-?mail\b|$))/i)?.[1] ??
-    r.match(/^(?:revisando|atualizando):\s*([^,\n]+),\s*e-?mail/i)?.[1] ??
+    r.match(/(?:revisando|atualizando):\s*([^,\n]+),\s*e-?mail/i)?.[1] ??
     extractSchedule(msgs).nome;
   const nome = limpoNome(cand);
   if (!nome || norm(nome) === norm(contato)) return '';
@@ -249,8 +250,8 @@ export function extractNomeReal(msgs, contato = '') {
 
 export function inferPlanilha(msgs, status) {
   const t = norm(msgs.map((m) => m.text).join(' '));
-  if (/(crianca|kids|filho|filha|nome do aluno|responsavel|\b\d{1,2} anos)/.test(t)) return { planilha: 'Kids', fonte: 'conversa (palavras de Kids)' };
-  if (status !== 'Não interagiu') return { planilha: 'Adulto', fonte: 'conversa (sem pista de Kids)' };
+  if (/(crianca|kids|filho|filha|nome do aluno|responsavel|\b\d{1,2} anos)/.test(t)) return { planilha: 'Kids', fonte: 'a conversa usa palavras de Kids (criança, filho, aluno…)' };
+  if (status !== 'Não interagiu') return { planilha: 'Adulto', fonte: 'sem pista de Kids na conversa' };
   return null;
 }
 
@@ -283,7 +284,7 @@ export function detectBotErrors(msgs, cfg = {}) {
   if (ph) erros.push(`texto-modelo vazou: "${ph.text.match(/\[[^\]\n]{2,40}\]/)[0]}"`);
 
   // 2) mesma pergunta repetida em sequência (recapitulações repetem por desenho e ficam de fora)
-  const bots = msgs.filter((m) => bot(m) && !RECAP.test(m.text.trim()) && !ENCERRAMENTO.test(m.text));
+  const bots = msgs.filter((m) => bot(m) && !RECAP.test(m.text) && !ENCERRAMENTO.test(m.text));
   for (let i = 1; i < bots.length; i++) {
     if (parecidas(bots[i - 1].text, bots[i].text)) {
       erros.push(`repetiu a mesma mensagem: "${corta(bots[i].text)}"`);
@@ -314,7 +315,7 @@ export function detectBotErrors(msgs, cfg = {}) {
   // 5) bot pediu o e-mail de novo depois de o lead já ter informado
   const iEmail = msgs.findIndex((m) => m.role === 'lead' && EMAIL.test(m.text));
   if (iEmail >= 0) {
-    const de_novo = msgs.slice(iEmail + 1).find((m) => bot(m) && /e-?mail/i.test(m.text) && /(qual|inform[ae]r?|pass[ae]r?|me passe|preciso|poderia|pode me)/i.test(m.text) && !RECAP.test(m.text.trim()));
+    const de_novo = msgs.slice(iEmail + 1).find((m) => bot(m) && /e-?mail/i.test(m.text) && /(qual|inform[ae]r?|pass[ae]r?|me passe|preciso|poderia|pode me)/i.test(m.text) && !RECAP.test(m.text));
     if (de_novo) erros.push(`pediu o e-mail de novo: "${corta(de_novo.text)}"`);
   }
 
@@ -361,7 +362,7 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
   if (ai?.status && ai.status !== status && ['Não quero', 'Agendado', 'Conversa Iniciada', 'Não interagiu'].includes(ai.status) && !/interação$/.test(status)) {
     // IA só pode contrariar a regra nos casos subjetivos; regras objetivas (Não interagiu) prevalecem.
     if (st.status !== 'Não interagiu') {
-      motivos.push(`IA mudou status ${status}→${ai.status}`);
+      motivos.push(`IA sugeriu mudar o status de "${status}" para "${ai.status}"`);
       status = ai.status;
       revisar = true;
     }
@@ -375,7 +376,10 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
   }
   if (!g.genero && ai?.genero && ['M', 'F'].includes(ai.genero)) {
     g = { genero: ai.genero, fonte: 'IA', confianca: ai.confianca_genero ?? 'media' };
-    if (g.confianca !== 'alta') revisar = true;
+    if (g.confianca !== 'alta') {
+      revisar = true;
+      motivos.push(`Gênero sugerido pela IA com confiança ${g.confianca}`);
+    }
   }
 
   let planilha = origem.planilha ?? ai?.planilha ?? null;
@@ -383,7 +387,7 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
     const inf = inferPlanilha(msgs, status);
     if (inf) {
       planilha = inf.planilha;
-      motivos.push(`planilha inferida: ${inf.fonte}`);
+      motivos.push(`Planilha ${planilha} inferida: ${inf.fonte}`);
       revisar = true;
     }
   }
@@ -395,7 +399,6 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
     motivos.push(q.motivo);
   }
   if (st.revisar) motivos.push(st.motivo);
-  if (origem.tipo !== 'campanha') motivos.push(`origem: ${origem.tipo}`);
 
   return {
     protocolo: lead.protocolo,
@@ -410,14 +413,14 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
     resumo: ai?.resumo_agendamento || extractResumo(msgs),
     filho: extractFilho(msgs),
     nomeSugerido: nomeReal,
-    errosBot: errosBot.join(' | '),
+    errosBot: errosBot.map((e) => `• ${e}`).join('\n'),
     planilha: planilha ?? '',
     tipoOrigem: origem.tipo,
     genero: g.genero ?? '',
     generoFonte: g.fonte ?? '',
     generoConfianca: g.confianca,
     revisar,
-    motivos: [...new Set(motivos)].join('; '),
+    conferir: [...new Set(motivos)].map((m) => `• ${m}`).join('\n'),
     canal: lead.canal,
     statusLiv: lead.status,
   };

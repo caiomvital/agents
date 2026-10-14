@@ -245,3 +245,32 @@ test('erros do bot: conversa normal não gera falso alerta; regras da equipe fun
   assert.ok(r.errosBot.includes('texto-modelo'));
   assert.equal(r.revisar, true);
 });
+
+test('Conferir: cada linha diz o que checar, em texto legível', () => {
+  const parcial = buildRow({ ...L, nome: 'Daniel' }, [lead('Pr. adulto'), bot('Qual dia?'), lead('Sábado'), bot('Seu e-mail?')], cfg);
+  assert.equal(parcial.revisar, true);
+  assert.match(parcial.conferir, /Agendamento incompleto: falta e-mail, horário/);
+
+  const semGenero = buildRow({ ...L, nome: 'brenne' }, [lead('Pr. Quero programação para adulto'), bot('Oi'), lead('ok')], cfg);
+  assert.match(semGenero.conferir, /Gênero não identificado pelo nome/);
+
+  const tudoCerto = buildRow(L, [lead('Pr. Quero programação para adulto'), bot('Oi'), lead('ok')], cfg);
+  assert.equal(tudoCerto.conferir, '');
+  assert.equal(tudoCerto.errosBot, '');
+
+  const inferida = buildRow(L, [lead('Boa noite'), bot('Olá'), lead('Quero aprender')], cfg);
+  assert.match(inferida.conferir, /Planilha Adulto inferida: sem pista de Kids na conversa/);
+});
+
+test('recapitulação precedida de "Perfeito!" também é reconhecida', () => {
+  const m = [lead('x'), bot('Perfeito! Revisando: - Nome do aluno: Davi Lima - Idade: 8 anos - Responsável: Ana Lima - E-mail: a@b.co - Aula experimental: sábado às 15h30. Está tudo certo?')];
+  assert.equal(extractFilho(m), 'Davi Lima');
+  assert.equal(extractNomeReal(m, 'Apelido'), 'Ana Lima');
+  assert.ok(extractResumo(m).startsWith('Nome do aluno: Davi Lima'));
+  assert.ok(!extractResumo(m).includes('Perfeito'));
+});
+
+test('resumo: corta "Está tudo certo?" mesmo quando o lead acrescenta algo depois', () => {
+  const m = [lead('Revisando: Ana Lima, e-mail: a@b.co. Aula na terça. Está tudo certo? Sim')];
+  assert.equal(extractResumo(m), 'Ana Lima. Aula na terça.');
+});
