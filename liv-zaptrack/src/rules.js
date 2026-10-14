@@ -111,8 +111,9 @@ export function extractSchedule(msgs) {
   for (let i = 0; i < msgs.length - 1; i++) {
     if (msgs[i].role !== 'lead' && /nome completo/i.test(msgs[i].text)) {
       const prox = msgs.slice(i + 1).find((m) => m.role === 'lead');
-      if (prox && !EMAIL.test(prox.text)) {
-        nome = prox.text.trim();
+      const txt = prox?.text.replace(EMAIL, '').replace(/\s+/g, ' ').trim();
+      if (txt && txt.length >= 3 && !/\d/.test(txt)) {
+        nome = txt;
         break;
       }
     }
@@ -195,6 +196,153 @@ export function qualify({ planilha, genero, status }) {
   return { qualificacao: q, motivo: `${planilha}/${genero}/${status}`, revisar: false };
 }
 
+
+// ---------- resumo do agendamento, aluno e nome real (a partir da recapitulação do bot) ----------
+
+const RECAP = /^(revisando|atualizando)\b/i;
+const temPlaceholder = (t) => /\[[^\]\n]{2,40}\]/.test(t);
+
+function recapitulacao(msgs) {
+  const cand = msgs.filter((m) => RECAP.test(m.text.trim()));
+  const boas = cand.filter((m) => !temPlaceholder(m.text));
+  return (boas.at(-1) ?? cand.at(-1))?.text ?? null;
+}
+
+export function extractResumo(msgs) {
+  const r = recapitulacao(msgs);
+  if (!r) return '';
+  return r
+    .replace(/\s*\n\s*/g, ' ')
+    .replace(RECAP, '')
+    .replace(/^[:\s-]+/, '')
+    .replace(/(?:-\s*)?e-?mail:?\s*[\w.+-]+@[\w.-]+\.\w+,?/gi, '')
+    .replace(new RegExp(EMAIL.source, 'g'), '')
+    .replace(/\s+-\s+/g, '; ')
+    .replace(/,\s*(?=[.,;])/g, '')
+    .replace(/\s*est[aá] tudo certo\??\s*$/i, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+const limpoNome = (n) => (n && !/[\[\d]|n[aã]o informado/i.test(n) ? n.trim().replace(/[.,;]+$/, '') : null);
+
+export function extractFilho(msgs) {
+  const r = recapitulacao(msgs) ?? '';
+  const a = r.match(/nome do aluno:\s*(.+?)(?=\s*(?:\n|;|\s-\s|idade\b|$))/i)?.[1];
+  const b = r.match(/^(?:revisando|atualizando):\s*([^,\n]+),\s*\d+\s*anos/i)?.[1];
+  return limpoNome(a) ?? limpoNome(b) ?? '';
+}
+
+/** Nome real informado na conversa (o contato da Liv costuma ser o apelido do WhatsApp). */
+export function extractNomeReal(msgs, contato = '') {
+  const r = recapitulacao(msgs) ?? '';
+  const cand =
+    r.match(/respons[aá]vel:\s*(.+?)(?=\s*(?:\n|;|,|\s-\s|e-?mail\b|$))/i)?.[1] ??
+    r.match(/^(?:revisando|atualizando):\s*([^,\n]+),\s*e-?mail/i)?.[1] ??
+    extractSchedule(msgs).nome;
+  const nome = limpoNome(cand);
+  if (!nome || norm(nome) === norm(contato)) return '';
+  return nome;
+}
+
+// ---------- planilha inferida pela conversa ----------
+
+export function inferPlanilha(msgs, status) {
+  const t = norm(msgs.map((m) => m.text).join(' '));
+  if (/(crianca|kids|filho|filha|nome do aluno|responsavel|\b\d{1,2} anos)/.test(t)) return { planilha: 'Kids', fonte: 'conversa (palavras de Kids)' };
+  if (status !== 'Não interagiu') return { planilha: 'Adulto', fonte: 'conversa (sem pista de Kids)' };
+  return null;
+}
+
+// ---------- erros do bot (a conferir) ----------
+
+const palavras = (t) => new Set(norm(t).split(/\W+/).filter((w) => w.length > 3));
+const parecidas = (a, b) => {
+  const A = palavras(a);
+  const B = palavras(b);
+  if (A.size < 6 || B.size < 6) return false;
+  let i = 0;
+  for (const w of A) if (B.has(w)) i++;
+  return i / (A.size + B.size - i) >= 0.7;
+};
+const ENCERRAMENTO = /atendimento finalizado|1 min,? ja volto|at[eé] mais|at[eé] a aula/i;
+const PERGUNTA = /\?|quero saber|\bqual\b|\bquanto|valor|pre[cç]o|hor[aá]rio/i;
+const corta = (t, n = 50) => t.replace(/\s+/g, ' ').slice(0, n);
+
+/**
+ * Procura desvios no comportamento do bot. Regras embutidas (a partir das conversas observadas) mais regras
+ * da equipe em cfg.botRegras. Retorna uma lista de textos curtos; vazio = nada a conferir.
+ */
+export function detectBotErrors(msgs, cfg = {}) {
+  const regras = cfg.botRegras ?? {};
+  const erros = [];
+  const bot = (m) => m.role !== 'lead';
+
+  // 1) texto-modelo que vazou para o lead, como "[seu filho]"
+  const ph = msgs.find((m) => bot(m) && temPlaceholder(m.text));
+  if (ph) erros.push(`texto-modelo vazou: "${ph.text.match(/\[[^\]\n]{2,40}\]/)[0]}"`);
+
+  // 2) mesma pergunta repetida em sequência (recapitulações repetem por desenho e ficam de fora)
+  const bots = msgs.filter((m) => bot(m) && !RECAP.test(m.text.trim()) && !ENCERRAMENTO.test(m.text));
+  for (let i = 1; i < bots.length; i++) {
+    if (parecidas(bots[i - 1].text, bots[i].text)) {
+      erros.push(`repetiu a mesma mensagem: "${corta(bots[i].text)}"`);
+      break;
+    }
+  }
+
+  // 3) lead perguntou algo e o bot só se despediu (ou nada)
+  const iUltimoLead = msgs.map((m) => m.role).lastIndexOf('lead');
+  if (iUltimoLead >= 0 && PERGUNTA.test(msgs[iUltimoLead].text)) {
+    const depois = msgs.slice(iUltimoLead + 1).filter(bot);
+    if (!depois.some((m) => !ENCERRAMENTO.test(m.text))) erros.push(`pergunta do lead sem resposta: "${corta(msgs[iUltimoLead].text)}"`);
+  }
+
+  // 4) lead perguntou valor e a resposta seguinte não trata de valor
+  const pergValor = /\b(valor|valores|quanto custa|pre[cç]o|mensalidade)\b/i;
+  const respValor = /R\$|valor|pre[cç]o|mensalidade|equipe|ligar|contato|promo/i;
+  for (let i = 0; i < msgs.length; i++) {
+    if (msgs[i].role === 'lead' && pergValor.test(msgs[i].text)) {
+      const prox = msgs.slice(i + 1).find(bot);
+      if (prox && !ENCERRAMENTO.test(prox.text) && !respValor.test(prox.text)) {
+        erros.push(`pergunta de valor sem resposta sobre valor: "${corta(msgs[i].text)}"`);
+        break;
+      }
+    }
+  }
+
+  // 5) bot pediu o e-mail de novo depois de o lead já ter informado
+  const iEmail = msgs.findIndex((m) => m.role === 'lead' && EMAIL.test(m.text));
+  if (iEmail >= 0) {
+    const de_novo = msgs.slice(iEmail + 1).find((m) => bot(m) && /e-?mail/i.test(m.text) && /(qual|inform[ae]r?|pass[ae]r?|me passe|preciso|poderia|pode me)/i.test(m.text) && !RECAP.test(m.text.trim()));
+    if (de_novo) erros.push(`pediu o e-mail de novo: "${corta(de_novo.text)}"`);
+  }
+
+  // 6) regras da equipe
+  if (regras.precoProibido) {
+    const m = msgs.find((x) => bot(x) && /R\$\s*\d/.test(x.text));
+    if (m) erros.push(`citou preço: "${corta(m.text)}"`);
+  }
+  for (const r of regras.proibidoNoBot ?? []) {
+    const m = msgs.find((x) => bot(x) && new RegExp(r.padrao, 'i').test(x.text));
+    if (m) erros.push(`${r.nome}: "${corta(m.text)}"`);
+  }
+  for (const r of regras.obrigatorioAposLead ?? []) {
+    const quando = new RegExp(r.quando, 'i');
+    const entao = new RegExp(r.entao, 'i');
+    for (let i = 0; i < msgs.length; i++) {
+      if (msgs[i].role === 'lead' && quando.test(msgs[i].text)) {
+        const prox = msgs.slice(i + 1).find(bot);
+        if (prox && !entao.test(prox.text)) {
+          erros.push(`${r.nome}: lead "${corta(msgs[i].text, 40)}"`);
+          break;
+        }
+      }
+    }
+  }
+  return erros;
+}
+
 // ---------- linha final ----------
 
 /**
@@ -219,13 +367,28 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
     }
   }
 
+  const nomeReal = extractNomeReal(msgs, lead.nome);
   let g = guessGender(lead.nome);
+  if (!g.genero && nomeReal) {
+    const g2 = guessGender(nomeReal);
+    if (g2.genero) g = { ...g2, fonte: 'dicionário (nome na conversa)' };
+  }
   if (!g.genero && ai?.genero && ['M', 'F'].includes(ai.genero)) {
     g = { genero: ai.genero, fonte: 'IA', confianca: ai.confianca_genero ?? 'media' };
     if (g.confianca !== 'alta') revisar = true;
   }
 
-  const planilha = origem.planilha ?? ai?.planilha ?? null;
+  let planilha = origem.planilha ?? ai?.planilha ?? null;
+  if (!planilha) {
+    const inf = inferPlanilha(msgs, status);
+    if (inf) {
+      planilha = inf.planilha;
+      motivos.push(`planilha inferida: ${inf.fonte}`);
+      revisar = true;
+    }
+  }
+  const errosBot = detectBotErrors(msgs, cfg);
+  if (errosBot.length) revisar = true;
   const q = qualify({ planilha, genero: g.genero, status });
   if (q.revisar) {
     revisar = true;
@@ -244,7 +407,10 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
     fone: phoneForSheet(lead.whatsapp),
     frase,
     email: st.ag.email ?? ai?.agendamento?.email ?? '',
-    resumo: ai?.resumo_agendamento ?? '',
+    resumo: ai?.resumo_agendamento || extractResumo(msgs),
+    filho: extractFilho(msgs),
+    nomeSugerido: nomeReal,
+    errosBot: errosBot.join(' | '),
     planilha: planilha ?? '',
     tipoOrigem: origem.tipo,
     genero: g.genero ?? '',

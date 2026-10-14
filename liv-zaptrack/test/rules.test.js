@@ -167,3 +167,81 @@ test('status: modo contagem produz "No interação" e o padrão continua Convers
 test('qualificação usa a grafia pedida: Desqualificado', () => {
   assert.equal(qualify({ planilha: 'Adulto', genero: 'M', status: 'Não interagiu' }).qualificacao, 'Desqualificado');
 });
+
+// ---------- resumo, aluno, nome real, planilha inferida, erros do bot ----------
+import { extractResumo, extractFilho, extractNomeReal, inferPlanilha, detectBotErrors } from '../src/rules.js';
+
+const kidsLista = [
+  lead('K2- Quero saber do curso para crianças'),
+  bot('Qual o nome completo do responsável e o e-mail?'),
+  lead('Beatriz Souza Lima beatriz@exemplo.com'),
+  bot('Revisando: - Nome do aluno: [seu filho] - Idade: 8 anos - Responsável: Beatriz Souza Lima - E-mail: beatriz@exemplo.com - Aula experimental: sábado às 13h30. Está tudo certo?'),
+  lead('Revisando: - Nome do aluno: Pedrinho Souza - Idade: 8 anos - Responsável: Beatriz Souza Lima - E-mail: beatriz@exemplo.com - Aula experimental: sábado às 13h30'),
+  bot('Perfeito! A equipe entrará em contato para confirmar.'),
+];
+
+test('resumo: usa a recapitulação do bot, sem e-mail e sem "está tudo certo"', () => {
+  const r = extractResumo(kidsLista);
+  assert.ok(r.includes('Aula experimental: sábado às 13h30'));
+  assert.ok(!r.includes('@'));
+  assert.ok(!/tudo certo/i.test(r));
+  const adulto = [lead('Pr. x'), bot('Revisando: Carlos Silva, e-mail: carlos@exemplo.com. Aula experimental na terça, das 19h às 22h. Está tudo certo?')];
+  assert.equal(extractResumo(adulto), 'Carlos Silva. Aula experimental na terça, das 19h às 22h.');
+  assert.equal(extractResumo([lead('oi')]), '');
+});
+
+test('aluno: lê "Nome do aluno" e ignora texto-modelo; formato curto também funciona', () => {
+  assert.equal(extractFilho(kidsLista), 'Pedrinho Souza');
+  assert.equal(extractFilho([bot('Revisando: Nicoly, 10 anos, sem experiência. Responsável: Clebio, x@y.co. Aula no sábado.')]), 'Nicoly');
+  assert.equal(extractFilho([bot('Revisando: - Nome do aluno: [não informado] - Idade: 8 anos')]), '');
+});
+
+test('nome real: pega o responsável da conversa e ignora quando é igual ao contato', () => {
+  assert.equal(extractNomeReal(kidsLista, 'Deus é mais'), 'Beatriz Souza Lima');
+  assert.equal(extractNomeReal(kidsLista, 'Beatriz Souza Lima'), '');
+});
+
+test('gênero usa o nome da conversa quando o contato é apelido', () => {
+  const r = buildRow({ ...L, nome: 'Deus é mais' }, kidsLista, cfg);
+  assert.equal(r.nomeSugerido, 'Beatriz Souza Lima');
+  assert.equal(r.genero, 'F');
+  assert.equal(r.generoFonte, 'dicionário (nome na conversa)');
+  assert.equal(r.filho, 'Pedrinho Souza');
+});
+
+test('planilha inferida pela conversa: Kids por palavras, Adulto por padrão se interagiu, nada se não interagiu', () => {
+  assert.equal(inferPlanilha([lead('meu filho quer'), bot('ok')], 'Conversa Iniciada').planilha, 'Kids');
+  assert.equal(inferPlanilha([lead('Boa noite'), bot('Olá'), lead('Quero aprender')], 'Conversa Iniciada').planilha, 'Adulto');
+  assert.equal(inferPlanilha([lead('Diz ai'), bot('Olá')], 'Não interagiu'), null);
+  const r = buildRow({ ...L, nome: 'Daniel' }, [lead('Boa noite'), bot('Olá'), lead('Quero aprender Java'), bot('Ótimo')], cfg);
+  assert.equal(r.planilha, 'Adulto');
+  assert.equal(r.revisar, true); // inferida: sempre conferir
+});
+
+test('erros do bot: texto-modelo, repetição, pergunta sem resposta, valor ignorado, e-mail pedido de novo', () => {
+  assert.ok(detectBotErrors(kidsLista).some((e) => e.includes('texto-modelo vazou')));
+
+  const rep = [lead('x'), bot('Você quer usar a IA para crescer na sua profissão ou para ganhar mais, com uma nova fonte de renda?'), lead('IA'), bot('Você quer usar a IA para crescer na sua profissão ou para ganhar mais, com uma nova fonte de renda?')];
+  assert.ok(detectBotErrors(rep).some((e) => e.startsWith('repetiu')));
+
+  const fim = [lead('x'), bot('Ok'), lead('Mas quero saber valores'), bot('Atendimento Finalizado com sucesso Obrigado!')];
+  assert.ok(detectBotErrors(fim).some((e) => e.startsWith('pergunta do lead sem resposta')));
+
+  const valor = [lead('x'), bot('Olá'), lead('Qual o valor?'), bot('Temos aulas na terça e no sábado, qual horário prefere?'), lead('sábado'), bot('Perfeito')];
+  assert.ok(detectBotErrors(valor).some((e) => e.startsWith('pergunta de valor')));
+
+  const mail = [lead('x'), bot('Qual seu e-mail?'), lead('a@b.co'), bot('Ótimo. Pode me informar seu e-mail?')];
+  assert.ok(detectBotErrors(mail).some((e) => e.startsWith('pediu o e-mail de novo')));
+});
+
+test('erros do bot: conversa normal não gera falso alerta; regras da equipe funcionam', () => {
+  const ok = [lead('Pr. Quero saber mais'), bot('Qual seu objetivo?'), lead('Aprender Java'), bot('Ótimo! Quer uma aula experimental?'), lead('Sim'), bot('Perfeito! A equipe entrará em contato.')];
+  assert.deepEqual(detectBotErrors(ok), []);
+  const preco = [lead('x'), bot('Custa R$ 247 por mês')];
+  assert.deepEqual(detectBotErrors(preco, {}), []);
+  assert.ok(detectBotErrors(preco, { botRegras: { precoProibido: true } })[0].startsWith('citou preço'));
+  assert.ok(detectBotErrors(preco, { botRegras: { proibidoNoBot: [{ nome: 'prometeu desconto', padrao: '247' }] } })[0].startsWith('prometeu desconto'));
+  const r = buildRow(L, [lead('Pr. adulto'), bot('Custa [valor]'), lead('ok')], cfg);
+  assert.ok(r.errosBot.includes('texto-modelo'));
+  assert.equal(r.revisar, true);
+});

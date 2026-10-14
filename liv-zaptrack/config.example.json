@@ -80,5 +80,11 @@
   "status": {
     "_nota": "A planilha mistura 'Conversa Iniciada' e '1o/2o/3o interação'. 'conversa_iniciada' segue o passo a passo; 'contagem' usa o nº de respostas do lead.",
     "interacao": "conversa_iniciada"
+  },
+  "botRegras": {
+    "_nota": "Regras de conduta do bot a conferir. As embutidas (texto-modelo vazado, pergunta repetida, pergunta sem resposta, valor sem resposta, e-mail pedido de novo) já rodam. Acrescente as da equipe aqui.",
+    "precoProibido": false,
+    "proibidoNoBot": [],
+    "obrigatorioAposLead": []
   }
 }
