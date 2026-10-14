@@ -22,10 +22,11 @@ export function phoneKey(raw) {
   return d.slice(0, 2) + d.slice(-8);
 }
 
-/** Formato da planilha: DDD + número, sem 55 (ex.: 81987770002). */
+/** Formato da planilha: DDD + número com nono dígito, sem 55 (ex.: 81987770002). A Liv entrega celulares sem o 9. */
 export function phoneForSheet(raw) {
   let d = String(raw ?? '').replace(/\D/g, '');
   if (d.startsWith('55') && d.length >= 12) d = d.slice(2);
+  if (d.length === 10 && /[6-9]/.test(d[2])) d = d.slice(0, 2) + '9' + d.slice(2);
   return d;
 }
 

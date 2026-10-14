@@ -17,6 +17,8 @@ test('telefone: ignora 55 e nono dígito; formato da planilha sem 55', () => {
   assert.equal(phoneKey('558187770001'), phoneKey('81987770001'));
   assert.equal(phoneKey('+55 (81) 9 8777-0001'), phoneKey('81987770001'));
   assert.equal(phoneForSheet('5581987770002'), '81987770002');
+  assert.equal(phoneForSheet('558187770002'), '81987770002'); // Liv sem o nono dígito
+  assert.equal(phoneForSheet('558133334444'), '8133334444'); // fixo não ganha 9
 });
 
 test('dedupe: primeira mensagem do lead vem duplicada na Liv', () => {
@@ -88,7 +90,7 @@ test('linha completa: homem, planilha adulta, conversa iniciada', () => {
   const r = buildRow(L, msgs, cfg);
   assert.equal(r.qualificacao, 'Qualificado');
   assert.equal(r.status, 'Conversa Iniciada');
-  assert.equal(r.fone, '8185550000');
+  assert.equal(r.fone, '81985550000');
   assert.equal(r.frase, 'Pr. Sou iniciante e quero saber mais sobre programação para adulto');
   assert.equal(r.revisar, false);
 });
