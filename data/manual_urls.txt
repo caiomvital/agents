@@ -1,0 +1,2 @@
+# Cole aqui uma URL de vaga por linha (LinkedIn, Gupy, site da empresa...).
+# O worker só lê a página pública; não faz login nem candidatura.
