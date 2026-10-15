@@ -343,3 +343,11 @@ test('Form sem pista: planilha assumida vem com aviso', () => {
   assert.equal(r.planilha, 'Adulto');
   assert.match(r.conferir, /lead de formulário sem pista/);
 });
+
+test('nome sugerido: rejeita respostas soltas e perguntas, aceita nome completo', () => {
+  const ask = bot('Para agendar, qual seu nome completo?');
+  assert.equal(extractNomeReal([ask, lead('Que horas tem')], 'Apelido'), '');
+  assert.equal(extractNomeReal([ask, lead('Quanto custa?')], 'Apelido'), '');
+  assert.equal(extractNomeReal([ask, lead('Sim')], 'Apelido'), '');
+  assert.equal(extractNomeReal([ask, lead('Maria Aparecida Souza')], 'Apelido'), 'Maria Aparecida Souza');
+});

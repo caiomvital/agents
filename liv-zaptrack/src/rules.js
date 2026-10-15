@@ -238,7 +238,13 @@ export function extractResumo(msgs) {
     .trim();
 }
 
-const limpoNome = (n) => (n && !/[\[\d]|n[aã]o informado/i.test(n) ? n.trim().replace(/[.,;]+$/, '') : null);
+// Só aceita algo com cara de nome de pessoa: sem perguntas, números, nem respostas soltas ("sim", "que horas tem").
+const NAO_NOME = /\?|[\[\d]|n[aã]o informado|\b(que|qual|quanto|quando|como|onde|horas?|hor[aá]rio|valor|valores|pre[cç]o|obrigad[oa]|sim|n[aã]o|ok|certo|bom dia|boa tarde|boa noite)\b/i;
+const limpoNome = (n) => {
+  const t = n?.trim().replace(/[.,;]+$/, '');
+  if (!t || NAO_NOME.test(t) || t.split(/\s+/).length > 7) return null;
+  return t;
+};
 
 export function extractFilho(msgs) {
   const r = recapitulacao(msgs) ?? '';
