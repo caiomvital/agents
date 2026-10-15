@@ -81,6 +81,11 @@ export async function connect({ baseUrl, login, password, allowTakeover = false,
   return { browser, page, ids, close };
 }
 
+// Link EXATO da paginação da grade (ScriptCase: classe scGridToolbarNav + nm_gp_submit_rec). Um seletor só por
+// texto ("5") coincide com filtros laterais (ex.: "Nota avaliação: 5") e poderia aplicar um filtro sem querer.
+const proximaPagina = (page, numero) =>
+  page.locator('a.scGridToolbarNav[href*="nm_gp_submit_rec"]').filter({ hasText: new RegExp(`^\\s*${numero}\\s*$`) }).first();
+
 const SQL_DATE = (iso) => iso; // aaaa-mm-dd
 
 /** Lista os atendimentos de UM dia (a Liv corta em 100 linhas; um dia fica bem abaixo disso). */
@@ -129,7 +134,7 @@ export async function mapearProtocolos(page, baseUrl, protocolos, { maxPaginas =
     }
     log(`Históricos pág ${n}: ${achados.length} linhas, faltam ${faltam.size}`);
     if (!faltam.size) break;
-    const prox = page.locator(`a:text-is("${n + 1}")`).first();
+    const prox = proximaPagina(page, n + 1);
     if (!(await prox.count())) break;
     await prox.click();
     await page.waitForTimeout(3000);
@@ -162,7 +167,7 @@ export async function lerConversa(page, baseUrl, idInterno) {
     });
     todas.push(...msgs);
     // Paginação do histórico (conversas longas): só segue se existir link da próxima página.
-    const prox = page.locator(`a:text-is("${pg + 1}")`).first();
+    const prox = proximaPagina(page, pg + 1);
     if (!(await prox.count())) break;
     // O histórico usa a mesma mecânica de grade; só consultas, nunca ações.
     await prox.click().catch(() => {});

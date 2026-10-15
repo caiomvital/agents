@@ -7,10 +7,19 @@
     "_nota": "Se null, o script descobre idCliente e canais sozinho a partir do dashboard pós-login."
   },
   "origens": {
-    "_nota": "Prefixos vistos na planilha: RM3 (Adulto), RC05/RC08/RC09 (Kids). Genéricos (Fb., Sb., Pr., SF, Bb., Ff., Form) usam palavras-chave e, sem pista de Kids, caem em padraoGenerico. Use * como curinga.",
+    "_nota": "Mapa conforme a planilha da equipe: RM*/Rml, RC07 e RC12 = Adulto; RC05/RC08/RC09, K1 e K2 = Kids. Genéricos (Fb., Sb., Pr., SF, Bb., Ff., Form, Ia., Wz.) usam palavras-chave e, sem pista de Kids, caem em padraoGenerico. Use * como curinga.",
     "prefixos": {
+      "RM2": "Adulto",
       "RM3": "Adulto",
-      "RC*": "Kids"
+      "RM4": "Adulto",
+      "Rml": "Adulto",
+      "RC07": "Adulto",
+      "RC12": "Adulto",
+      "RC05": "Kids",
+      "RC08": "Kids",
+      "RC09": "Kids",
+      "K1": "Kids",
+      "K2": "Kids"
     },
     "palavrasAdulto": [
       "adulto",
@@ -38,7 +47,8 @@
       "Ia",
       "Wz"
     ],
-    "padraoGenerico": "Adulto"
+    "padraoGenerico": "Adulto",
+    "formularioComoInteracao": true
   },
   "naoQuero": {
     "_nota": "Expressões que sugerem 'Não quero' (disponibilidade, distância, financeiro). Sempre marcadas para conferência.",
@@ -86,5 +96,10 @@
     "precoProibido": false,
     "proibidoNoBot": [],
     "obrigatorioAposLead": []
+  },
+  "ignorar": {
+    "_nota": "Contatos internos que não contam como lead (equipe testando o bot). Telefones (qualquer formato) e padrões de nome (regex).",
+    "telefones": [],
+    "nomes": []
   }
 }

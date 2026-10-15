@@ -209,10 +209,10 @@ test('gênero usa o nome da conversa quando o contato é apelido', () => {
   assert.equal(r.filho, 'Pedrinho Souza');
 });
 
-test('planilha inferida pela conversa: Kids por palavras, Adulto por padrão se interagiu, nada se não interagiu', () => {
+test('planilha inferida pela conversa: Kids por palavras, senão Adulto (como a equipe lança)', () => {
   assert.equal(inferPlanilha([lead('meu filho quer'), bot('ok')], 'Conversa Iniciada').planilha, 'Kids');
   assert.equal(inferPlanilha([lead('Boa noite'), bot('Olá'), lead('Quero aprender')], 'Conversa Iniciada').planilha, 'Adulto');
-  assert.equal(inferPlanilha([lead('Diz ai'), bot('Olá')], 'Não interagiu'), null);
+  assert.equal(inferPlanilha([lead('Diz ai'), bot('Olá')], 'Não interagiu').planilha, 'Adulto');
   const r = buildRow({ ...L, nome: 'Daniel' }, [lead('Boa noite'), bot('Olá'), lead('Quero aprender Java'), bot('Ótimo')], cfg);
   assert.equal(r.planilha, 'Adulto');
   assert.equal(r.revisar, true); // inferida: sempre conferir
@@ -273,4 +273,73 @@ test('recapitulação precedida de "Perfeito!" também é reconhecida', () => {
 test('resumo: corta "Está tudo certo?" mesmo quando o lead acrescenta algo depois', () => {
   const m = [lead('Revisando: Ana Lima, e-mail: a@b.co. Aula na terça. Está tudo certo? Sim')];
   assert.equal(extractResumo(m), 'Ana Lima. Aula na terça.');
+});
+
+// ---------- ajustes após comparar com a planilha da equipe (12 e 13/10) ----------
+test('Agendado: horário vindo da confirmação do bot conta (lead só disse "Terça")', () => {
+  const msgs = [
+    lead('Fb. Sou iniciante e quero saber mais sobre programação para adulto'),
+    bot('Qual seu nome completo?'), lead('Leonardo Lima Morais da Silva'),
+    bot('Qual seu e-mail?'), lead('leo@exemplo.com'),
+    bot('Qual dia e horário? Opções: - Terça, 19h às 22h - Quinta, 19h às 22h - Sábado, 8h30 às 12h30'),
+    lead('Terça'),
+    bot('Perfeito! Vamos agendar sua aula experimental na terça-feira, das 19h às 22h. Revisando: Leonardo Lima Morais da Silva, e-mail: leo@exemplo.com. Aula experimental na terça, das 19h às 22h. Está tudo certo?'),
+    lead('Sim'),
+  ];
+  const s = classifyStatus(msgs, cfg);
+  assert.equal(s.status, 'Agendado');
+  assert.ok(s.ag.horario);
+});
+
+test('Agendado: lista de opções do bot sozinha NÃO conta como dia e horário escolhidos', () => {
+  const msgs = [lead('Pr. x'), bot('Qual seu e-mail?'), lead('a@b.co'), bot('Escolha. Opções: - Terça, 19h às 22h - Sábado, 8h30'), lead('depois eu vejo')];
+  assert.notEqual(classifyStatus(msgs, cfg).status, 'Agendado');
+});
+
+test('Form-: lead de formulário que não escreveu mais nada vira Agendado (configurável, com aviso)', () => {
+  const r = buildRow({ ...L, nome: 'Daniel' }, [lead('Form- Confirmei uma aula gratuita,, obrigado'), bot('Perfeito! A equipe entrará em contato para confirmar.')], { ...cfg, origens: { ...cfg.origens, prefixos: { ...cfg.origens.prefixos, Form: 'Adulto' } } });
+  assert.equal(r.status, 'Agendado');
+  assert.match(r.conferir, /Lead de formulário/);
+  const ci = buildRow({ ...L, nome: 'Daniel' }, [lead('Form- Confirmei uma aula gratuita'), bot('ok')], { ...cfg, origens: { ...cfg.origens, formularioStatus: 'Conversa Iniciada' } });
+  assert.equal(ci.status, 'Conversa Iniciada');
+  const off = buildRow({ ...L, nome: 'Daniel' }, [lead('Form- Confirmei uma aula gratuita'), bot('ok')], { ...cfg, origens: { ...cfg.origens, formularioComoInteracao: false } });
+  assert.equal(off.status, 'Não interagiu');
+});
+
+test('Frase fora de campanha ganha o prefixo que a equipe usa', () => {
+  assert.equal(buildRow(L, [lead('Boa noite'), bot('Olá')], cfg).frase, 'Saudação - Boa noite');
+  assert.equal(buildRow(L, [lead('Quantas horas de curso?'), bot('x')], cfg).frase, 'Dúvida - Quantas horas de curso?');
+  assert.equal(buildRow(L, [lead('Pr. Quero programação para adulto'), bot('x')], cfg).frase, 'Pr. Quero programação para adulto');
+});
+
+test('gênero: letras estilizadas, número no apelido e grafias variantes', () => {
+  assert.equal(guessGender('𝑹𝒆𝒗𝒊𝒂𝒏𝒆 𝑳𝒊𝒎𝒂').genero, 'F');
+  assert.equal(guessGender('Kauã1').confianca, 'ambíguo');
+  assert.equal(guessGender('Priscyla Moraes').genero, 'F');
+  assert.equal(guessGender('Renatha').genero, 'F');
+  assert.equal(guessGender('Sidinei Bezerra').genero, 'M');
+  assert.equal(guessGender('Suzana').genero, 'F');
+  assert.equal(guessGender('Herverto Diogo').genero, 'M');
+});
+
+test('Agendado pelo bot vem com aviso para a equipe confirmar', () => {
+  const msgs = [lead('Fb. Quero saber para adulto'), bot('Qual seu nome?'), lead('Ana Lima Souza'), bot('E-mail?'), lead('a@b.co'), bot('Revisando: Ana Lima Souza, e-mail: a@b.co. Aula experimental na terça, das 19h às 22h. Está tudo certo?'), lead('Sim')];
+  const r = buildRow({ ...L, nome: 'Ana' }, msgs, cfg);
+  assert.equal(r.status, 'Agendado');
+  assert.match(r.conferir, /Agendado pelo bot/);
+});
+
+test('prefixos RC: RC05/08/09 são Kids, RC07/RC12 são Adulto (como na planilha da equipe)', () => {
+  const c = { origens: { prefixos: { RC05: 'Kids', RC08: 'Kids', RC09: 'Kids', RC07: 'Adulto', RC12: 'Adulto', K2: 'Kids', RM2: 'Adulto' } } };
+  assert.equal(classifyOrigin('RC05- Quero informação sobre Programação Kids', c).planilha, 'Kids');
+  assert.equal(classifyOrigin('RC12 - Desejo conhecer mais sobre o curso de programação', c).planilha, 'Adulto');
+  assert.equal(classifyOrigin('RC07- Tenho interesse no curso de Programação', c).planilha, 'Adulto');
+  assert.equal(classifyOrigin('K2- Gostaria de saber mais', c).planilha, 'Kids');
+});
+
+test('Form sem pista: planilha assumida vem com aviso', () => {
+  const c = { ...cfg, origens: { ...cfg.origens, genericos: ['Form'], padraoGenerico: 'Adulto' } };
+  const r = buildRow({ ...L, nome: 'Ana' }, [lead('Form- Confirmei uma aula gratuita'), bot('ok')], c);
+  assert.equal(r.planilha, 'Adulto');
+  assert.match(r.conferir, /lead de formulário sem pista/);
 });

@@ -7,6 +7,7 @@ const NOMES = JSON.parse(readFileSync(new URL('./data/nomes.json', import.meta.u
 
 export const norm = (s) =>
   String(s ?? '')
+    .normalize('NFKC') // letras estilizadas (𝑹𝒆𝒗𝒊𝒂𝒏𝒆) viram letras comuns
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase()
@@ -103,8 +104,11 @@ const HORA = /\b\d{1,2}\s*(h|:)\s*\d{0,2}|\b\d{1,2}\s*horas?\b/i;
 export function extractSchedule(msgs) {
   const lead = leadMsgs(msgs);
   const email = lead.map((m) => m.text.match(EMAIL)?.[0]).find(Boolean) ?? null;
-  const dia = lead.map((m) => m.text.match(DIA)?.[0]).find(Boolean) ?? null;
-  const horario = lead.map((m) => m.text.match(HORA)?.[0]?.trim()).find(Boolean) ?? null;
+  // Muitas vezes o lead só escreve "Terça" e o horário aparece na confirmação do bot ("terça, das 19h às 22h").
+  // Só valem mensagens de confirmação, nunca as listas de opções oferecidas.
+  const confirmacoes = msgs.filter((m) => m.role !== 'lead' && /\b(revisando|atualizando):|agendad[ao] para|voc[eê] escolheu/i.test(m.text) && !/\bop[cç][oõ]es\b/i.test(m.text));
+  const dia = lead.map((m) => m.text.match(DIA)?.[0]).find(Boolean) ?? confirmacoes.map((m) => m.text.match(DIA)?.[0]).find(Boolean) ?? null;
+  const horario = lead.map((m) => m.text.match(HORA)?.[0]?.trim()).find(Boolean) ?? confirmacoes.map((m) => m.text.match(HORA)?.[0]?.trim()).find(Boolean) ?? null;
 
   // nome completo: resposta do lead logo depois de o bot pedir "nome completo"
   let nome = null;
@@ -167,12 +171,21 @@ export function primeiroNome(nome) {
   return toks.find((t) => !TITULOS.has(norm(t))) ?? '';
 }
 
+const SET_M = new Set(NOMES.M);
+const SET_F = new Set(NOMES.F);
+const SET_A = new Set(NOMES.ambiguos);
+
+// Grafias variantes do mesmo nome (Priscyla/Priscila, Renatha/Renata, Ellen/Elen).
+const variantes = (p) => [...new Set([p, p.replace(/y/g, 'i'), p.replace(/th/g, 't'), p.replace(/ph/g, 'f'), p.replace(/y/g, 'i').replace(/th/g, 't'), p.replace(/(.)\1+/g, '$1')])];
+
 export function guessGender(nome) {
   const p = norm(primeiroNome(nome));
   if (p.length < 2) return { genero: null, fonte: null, confianca: 'nenhuma' };
-  if (NOMES.M.includes(p)) return { genero: 'M', fonte: 'dicionário', confianca: 'alta' };
-  if (NOMES.F.includes(p)) return { genero: 'F', fonte: 'dicionário', confianca: 'alta' };
-  if (NOMES.ambiguos.includes(p)) return { genero: null, fonte: 'dicionário', confianca: 'ambíguo' };
+  for (const v of variantes(p)) {
+    if (SET_A.has(v)) return { genero: null, fonte: 'dicionário', confianca: 'ambíguo' };
+    if (SET_M.has(v)) return { genero: 'M', fonte: 'dicionário', confianca: 'alta' };
+    if (SET_F.has(v)) return { genero: 'F', fonte: 'dicionário', confianca: 'alta' };
+  }
   return { genero: null, fonte: null, confianca: 'nenhuma' };
 }
 
@@ -251,8 +264,8 @@ export function extractNomeReal(msgs, contato = '') {
 export function inferPlanilha(msgs, status) {
   const t = norm(msgs.map((m) => m.text).join(' '));
   if (/(crianca|kids|filho|filha|nome do aluno|responsavel|\b\d{1,2} anos)/.test(t)) return { planilha: 'Kids', fonte: 'a conversa usa palavras de Kids (criança, filho, aluno…)' };
-  if (status !== 'Não interagiu') return { planilha: 'Adulto', fonte: 'sem pista de Kids na conversa' };
-  return null;
+  // A equipe lança na aba Adulto o que não tem pista de Kids, inclusive saudações sem interação.
+  return { planilha: 'Adulto', fonte: 'sem pista de Kids na conversa' };
 }
 
 // ---------- erros do bot (a conferir) ----------
@@ -359,6 +372,17 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
   let revisar = st.revisar;
 
   let status = st.status;
+  if (status === 'Não interagiu' && norm(origem.prefixo ?? '') === 'form' && cfg.origens?.formularioComoInteracao !== false) {
+    // "Form- Confirmei uma aula gratuita": o lead já confirmou a aula pelo formulário. Em 12 e 13/10 a equipe lançou
+    // 6 de 8 desses leads como Agendado e 2 como Conversa Iniciada.
+    status = cfg.origens?.formularioStatus ?? 'Agendado';
+    motivos.push(`Lead de formulário (confirmou aula gratuita): lançado como ${status}; a equipe usa Agendado na maioria e Conversa Iniciada em alguns`);
+    revisar = true;
+  }
+  if (status === 'Agendado' && st.status === 'Agendado' && cfg.avisoAgendadoPeloBot !== false) {
+    motivos.push('Agendado pelo bot (nome, e-mail, dia e horário); a equipe às vezes mantém Conversa Iniciada até confirmar com o lead');
+    revisar = true;
+  }
   if (ai?.status && ai.status !== status && ['Não quero', 'Agendado', 'Conversa Iniciada', 'Não interagiu'].includes(ai.status) && !/interação$/.test(status)) {
     // IA só pode contrariar a regra nos casos subjetivos; regras objetivas (Não interagiu) prevalecem.
     if (st.status !== 'Não interagiu') {
@@ -383,6 +407,10 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
   }
 
   let planilha = origem.planilha ?? ai?.planilha ?? null;
+  if (planilha && origem.fonte === 'padrão genérico' && norm(origem.prefixo ?? '') === 'form') {
+    motivos.push(`Planilha ${planilha} assumida: lead de formulário sem pista de Adulto ou Kids`);
+    revisar = true;
+  }
   if (!planilha) {
     const inf = inferPlanilha(msgs, status);
     if (inf) {
@@ -408,7 +436,7 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
     status,
     nome: lead.nome,
     fone: phoneForSheet(lead.whatsapp),
-    frase,
+    frase: origem.tipo === 'saudacao' ? `Saudação - ${frase}` : origem.tipo === 'duvida' ? `Dúvida - ${frase}` : frase,
     email: st.ag.email ?? ai?.agendamento?.email ?? '',
     resumo: ai?.resumo_agendamento || extractResumo(msgs),
     filho: extractFilho(msgs),

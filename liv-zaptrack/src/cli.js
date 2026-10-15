@@ -8,6 +8,7 @@ import { connect, listarProtocolosDoDia, mapearProtocolos, lerConversa } from '.
 import { buildRow } from './rules.js';
 import { classificarComIA } from './ai.js';
 import { diasEntre, hojeISO, somaDias } from './dates.js';
+import { phoneKey } from './rules.js';
 import { chaveDoLead, chavesExistentes, lerCSVs, ultimaData, tokenGoogle, lerAbaGoogle, registrosDaPlanilha, anexarRascunho } from './sheet.js';
 import { gravar, paraCSV, paraPlanilha, porAba, matrizParaCSV } from './output.js';
 
@@ -87,6 +88,14 @@ try {
   }
   // Mais antigo primeiro: é a ordem em que entram na planilha.
   leads.sort((x, y) => `${x.data.split('/').reverse().join('')}${x.hora}`.localeCompare(`${y.data.split('/').reverse().join('')}${y.hora}`));
+
+  // Contatos internos (equipe testando o bot) não entram na contagem.
+  const ign = cfg.ignorar ?? {};
+  const ignTel = new Set((ign.telefones ?? []).map(phoneKey));
+  const ignNomes = (ign.nomes ?? []).map((n) => new RegExp(n, 'i'));
+  const antesIgn = leads.length;
+  leads = leads.filter((l) => !ignTel.has(phoneKey(l.whatsapp)) && !ignNomes.some((re) => re.test(l.nome)));
+  if (antesIgn !== leads.length) log(`${antesIgn - leads.length} contato(s) interno(s) ignorado(s).`);
 
   if (!a['sem-dedupe']) {
     const antes = leads.length;
