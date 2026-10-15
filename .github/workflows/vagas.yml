@@ -1,0 +1,26 @@
+name: Coletar vagas
+on:
+  schedule:
+    - cron: "0 11,17 * * *"   # 08h e 14h (Recife)
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: vagas
+  cancel-in-progress: false
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s tests
+      - run: python worker/main.py
+      - name: Salvar resultados
+        run: |
+          git config user.name "job-worker"
+          git config user.email "job-worker@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet || git commit -m "dados: novas vagas" && git push
