@@ -176,3 +176,18 @@ export async function lerConversa(page, baseUrl, idInterno) {
   }
   return dedupeMessages(todas.map(({ n, ...m }) => m));
 }
+
+/** Atendentes cadastrados na Liv (nome e e-mail). Servem para reconhecer a equipe quando ela conversa com o bot. */
+export async function listarAtendentes(page, baseUrl) {
+  await page.goto(`${baseUrl}/app_grid_sec_atendentes/`, { waitUntil: 'networkidle' });
+  return page.evaluate(() =>
+    [...document.querySelectorAll('tr')]
+      .filter((tr) => !tr.querySelector('tr'))
+      .map((tr) => [...tr.querySelectorAll('td')].map((td) => td.innerText.replace(/\s+/g, ' ').trim()))
+      .map((c) => {
+        const iUsuario = c.findIndex((x) => x.includes('@')); // colunas: ... Usuário, Nome, E-mail, Privilégio, Ativo
+        return iUsuario >= 0 && c[iUsuario + 1] ? { nome: c[iUsuario + 1], email: c[iUsuario] } : null;
+      })
+      .filter(Boolean),
+  );
+}

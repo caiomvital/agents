@@ -11,7 +11,7 @@ const cfg = {
 };
 const lead = (t, at = '13/10/2026 10:00:00') => ({ role: 'lead', autor: 'X', at, text: t });
 const bot = (t, at = '13/10/2026 10:00:03') => ({ role: 'bot', autor: 'Assistente virtual', at, text: t });
-const L = { protocolo: '830000000000001', data: '13/10/2026', hora: '10:00:00', nome: 'Daniel Teste', whatsapp: '558185550000', status: 'Encerrado pelo Sistema', canal: 'Canal X' };
+const L = { protocolo: '830000000000001', data: '13/10/2026', hora: '10:00:00', nome: 'Daniel Souza', whatsapp: '558185550000', status: 'Encerrado pelo Sistema', canal: 'Canal X' };
 
 test('telefone: ignora 55 e nono dígito; formato da planilha sem 55', () => {
   assert.equal(phoneKey('558187770001'), phoneKey('81987770001'));
@@ -249,7 +249,7 @@ test('erros do bot: conversa normal não gera falso alerta; regras da equipe fun
 test('Conferir: cada linha diz o que checar, em texto legível', () => {
   const parcial = buildRow({ ...L, nome: 'Daniel' }, [lead('Pr. adulto'), bot('Qual dia?'), lead('Sábado'), bot('Seu e-mail?')], cfg);
   assert.equal(parcial.revisar, true);
-  assert.match(parcial.conferir, /Agendamento incompleto: falta e-mail, horário/);
+  assert.match(parcial.conferir, /Agendamento incompleto: falta nome, e-mail/);
 
   const semGenero = buildRow({ ...L, nome: 'brenne' }, [lead('Pr. Quero programação para adulto'), bot('Oi'), lead('ok')], cfg);
   assert.match(semGenero.conferir, /Gênero não identificado pelo nome/);
@@ -326,7 +326,9 @@ test('Agendado pelo bot vem com aviso para a equipe confirmar', () => {
   const msgs = [lead('Fb. Quero saber para adulto'), bot('Qual seu nome?'), lead('Ana Lima Souza'), bot('E-mail?'), lead('a@b.co'), bot('Revisando: Ana Lima Souza, e-mail: a@b.co. Aula experimental na terça, das 19h às 22h. Está tudo certo?'), lead('Sim')];
   const r = buildRow({ ...L, nome: 'Ana' }, msgs, cfg);
   assert.equal(r.status, 'Agendado');
-  assert.match(r.conferir, /Agendado pelo bot/);
+  assert.equal(r.conferir, ''); // sem aviso por padrão: a regra é da equipe
+  const aviso = buildRow({ ...L, nome: 'Ana' }, msgs, { ...cfg, avisoAgendadoPeloBot: true });
+  assert.match(aviso.conferir, /Agendado pelo bot/);
 });
 
 test('prefixos RC: RC05/08/09 são Kids, RC07/RC12 são Adulto (como na planilha da equipe)', () => {
@@ -350,4 +352,48 @@ test('nome sugerido: rejeita respostas soltas e perguntas, aceita nome completo'
   assert.equal(extractNomeReal([ask, lead('Quanto custa?')], 'Apelido'), '');
   assert.equal(extractNomeReal([ask, lead('Sim')], 'Apelido'), '');
   assert.equal(extractNomeReal([ask, lead('Maria Aparecida Souza')], 'Apelido'), 'Maria Aparecida Souza');
+});
+
+test('Agendado = lead passou nome, e-mail e turno/turma (horário exato não é exigido)', () => {
+  const msgs = [lead('Pr. Quero saber'), bot('Qual seu nome completo?'), lead('Maria Souza'), bot('E-mail?'), lead('m@x.co'), bot('Qual turno? manhã, tarde ou noite?'), lead('Noite')];
+  const s = classifyStatus(msgs, cfg);
+  assert.equal(s.status, 'Agendado');
+  assert.equal(s.ag.horario, null);
+  // sem turno/turma não fecha
+  const sem = classifyStatus([lead('Pr. x'), bot('Nome completo?'), lead('Maria Souza'), bot('E-mail?'), lead('m@x.co')], cfg);
+  assert.equal(sem.status, 'Conversa Iniciada');
+  assert.match(sem.motivo, /falta turno\/turma/);
+  // sem nome não fecha
+  const semNome = classifyStatus([lead('Pr. x'), bot('E-mail?'), lead('m@x.co'), bot('Qual turno?'), lead('Noite')], cfg);
+  assert.equal(semNome.status, 'Conversa Iniciada');
+  assert.match(semNome.motivo, /falta nome/);
+});
+
+test('Agendado: nome pode vir só na recapitulação do bot (responsável)', () => {
+  const msgs = [lead('K2- quero saber'), bot('Seu e-mail?'), lead('r@x.co'), bot('Revisando: - Nome do aluno: Davi - Responsável: Rita Lima - E-mail: r@x.co - Aula experimental: sábado. Está tudo certo?'), lead('Sim')];
+  assert.equal(classifyStatus(msgs, cfg).status, 'Agendado');
+});
+
+import { combinaComAtendente, dicaDeContatoInterno } from '../src/rules.js';
+test('contato interno: nome igual a atendente de nome composto; nome simples não descarta', () => {
+  const at = [{ nome: 'Diógenes Leão' }, { nome: 'Secretaria Fuctura' }, { nome: 'Joana' }, { nome: 'Caio' }];
+  assert.ok(combinaComAtendente('Diógenes s Leao', at));
+  assert.ok(combinaComAtendente('Secretaria FUCTURA', at));
+  assert.equal(combinaComAtendente('Joana', at), null); // lead chamada Joana não é descartada
+  assert.equal(combinaComAtendente('Caio Silva', at), null);
+  assert.equal(combinaComAtendente('Diógenes Souza', at), null);
+});
+test('dica de contato interno só avisa', () => {
+  assert.equal(dicaDeContatoInterno('THYAGO FUCTURA'), true);
+  assert.equal(dicaDeContatoInterno('Pedro teste'), true);
+  assert.equal(dicaDeContatoInterno('Maria Souza'), false);
+  const r = buildRow({ ...L, nome: 'Fuctura Kids' }, [lead('Pr. x'), bot('?')], cfg);
+  assert.match(r.conferir, /parece de contato interno/);
+});
+
+test('homônimo de atendente: não descarta, avisa para conferir e orienta usar o telefone', () => {
+  const r = buildRow({ ...L, nome: 'Maria Souza', homonimoDe: 'atendente "Maria Souza" da Liv' }, [lead('Pr. Quero programação para adulto'), bot('Oi'), lead('ok')], cfg);
+  assert.equal(r.revisar, true);
+  assert.match(r.conferir, /Nome igual ao de atendente "Maria Souza" da Liv; pode ser homônimo/);
+  assert.match(r.conferir, /ignorar\.telefones/);
 });

@@ -4,8 +4,8 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { connect, listarProtocolosDoDia, mapearProtocolos, lerConversa } from './liv.js';
-import { buildRow } from './rules.js';
+import { connect, listarProtocolosDoDia, mapearProtocolos, lerConversa, listarAtendentes } from './liv.js';
+import { buildRow, combinaComAtendente } from './rules.js';
 import { classificarComIA } from './ai.js';
 import { diasEntre, hojeISO, somaDias } from './dates.js';
 import { phoneKey } from './rules.js';
@@ -93,9 +93,21 @@ try {
   const ign = cfg.ignorar ?? {};
   const ignTel = new Set((ign.telefones ?? []).map(phoneKey));
   const ignNomes = (ign.nomes ?? []).map((n) => new RegExp(n, 'i'));
+  // Só o TELEFONE descarta um contato (nome igual pode ser homônimo). Nome igual ao de um atendente da Liv ou
+  // a um padrão de ignorar.nomes apenas gera aviso na coluna Conferir.
+  const atendentes = ign.usarAtendentesDaLiv === false ? [] : await listarAtendentes(liv.page, baseUrl);
   const antesIgn = leads.length;
-  leads = leads.filter((l) => !ignTel.has(phoneKey(l.whatsapp)) && !ignNomes.some((re) => re.test(l.nome)));
-  if (antesIgn !== leads.length) log(`${antesIgn - leads.length} contato(s) interno(s) ignorado(s).`);
+  leads = leads.filter((l) => {
+    if (!ignTel.has(phoneKey(l.whatsapp))) return true;
+    log(`ignorado: protocolo ${l.protocolo} (telefone na lista ignorar.telefones)`);
+    return false;
+  });
+  for (const l of leads) {
+    const at = combinaComAtendente(l.nome, atendentes);
+    if (at) l.homonimoDe = `atendente "${at.nome}" da Liv`;
+    else if (ignNomes.some((re) => re.test(l.nome))) l.homonimoDe = 'um nome da lista ignorar.nomes';
+  }
+  if (antesIgn !== leads.length) log(`${antesIgn - leads.length} contato(s) interno(s) ignorado(s) por telefone.`);
 
   if (!a['sem-dedupe']) {
     const antes = leads.length;

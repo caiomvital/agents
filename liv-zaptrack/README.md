@@ -25,6 +25,7 @@ Automatiza a parte repetitiva do passo a passo "Análise Liv → Zap Track": lê
 - Não abre o chat ao vivo, então não marca conversa como lida nem assume atendimento.
 - Se a Liv avisar "usuário já conectado em outra sessão", o script **para** (não derruba ninguém), a menos que
   `LIV_ALLOW_SESSION_TAKEOVER=1`.
+- Contatos internos: só o telefone descarta (`ignorar.telefones`). Nome igual ao de um atendente da Liv gera só um aviso em Conferir, porque pode ser homônimo.
 - Ao terminar, sai da Liv para liberar a sessão. Usuários de atendente (não administradores) caem direto na tela de chat após o login; o script sai dela sem interagir e usa `liv.idCliente`/`liv.idInstancias` do `config.json`.
 
 ## Uso

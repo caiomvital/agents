@@ -98,8 +98,13 @@
     "obrigatorioAposLead": []
   },
   "ignorar": {
-    "_nota": "Contatos internos que não contam como lead (equipe testando o bot). Telefones (qualquer formato) e padrões de nome (regex).",
+    "_nota": "Contatos internos que não contam como lead. SÓ O TELEFONE descarta (nome igual pode ser homônimo). Nome igual ao de um atendente da Liv, a um padrão de 'nomes' ou contendo 'fuctura'/'teste' apenas gera aviso em Conferir.",
     "telefones": [],
-    "nomes": []
+    "nomes": [],
+    "usarAtendentesDaLiv": true,
+    "dicasNome": [
+      "fuctura",
+      "\\bteste\\b"
+    ]
   }
 }

@@ -100,6 +100,7 @@ export function classifyOrigin(frase, cfg = {}) {
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
 const DIA = /\b(segunda|ter[cç]a|quarta|quinta|sexta|s[aá]bado|domingo)\b|\b\d{1,2}\s*(de|\/)\s*(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|\d{1,2})/i;
 const HORA = /\b\d{1,2}\s*(h|:)\s*\d{0,2}|\b\d{1,2}\s*horas?\b/i;
+const TURNO = /\b(manh[ãa]|tarde|noite|turno|turma)\b/i;
 
 export function extractSchedule(msgs) {
   const lead = leadMsgs(msgs);
@@ -109,20 +110,28 @@ export function extractSchedule(msgs) {
   const confirmacoes = msgs.filter((m) => m.role !== 'lead' && /\b(revisando|atualizando):|agendad[ao] para|voc[eê] escolheu/i.test(m.text) && !/\bop[cç][oõ]es\b/i.test(m.text));
   const dia = lead.map((m) => m.text.match(DIA)?.[0]).find(Boolean) ?? confirmacoes.map((m) => m.text.match(DIA)?.[0]).find(Boolean) ?? null;
   const horario = lead.map((m) => m.text.match(HORA)?.[0]?.trim()).find(Boolean) ?? confirmacoes.map((m) => m.text.match(HORA)?.[0]?.trim()).find(Boolean) ?? null;
+  // Turno/turma: "manhã", "tarde", "noite", "turma"… dito pelo lead ou confirmado pelo bot.
+  const turno = lead.map((m) => m.text.match(TURNO)?.[0]).find(Boolean) ?? confirmacoes.map((m) => m.text.match(TURNO)?.[0]).find(Boolean) ?? null;
 
   // nome completo: resposta do lead logo depois de o bot pedir "nome completo"
   let nome = null;
   for (let i = 0; i < msgs.length - 1; i++) {
     if (msgs[i].role !== 'lead' && /nome completo/i.test(msgs[i].text)) {
       const prox = msgs.slice(i + 1).find((m) => m.role === 'lead');
-      const txt = prox?.text.replace(EMAIL, '').replace(/\s+/g, ' ').trim();
-      if (txt && txt.length >= 3 && !/\d/.test(txt)) {
+      const txt = limpoNome(prox?.text.replace(EMAIL, '').replace(/\s+/g, ' ').trim());
+      if (txt && txt.length >= 3) {
         nome = txt;
         break;
       }
     }
   }
-  return { email, dia, horario, nome, completo: Boolean(email && dia && horario) };
+  // O nome também pode vir na recapitulação do bot ("Responsável: …" / "Revisando: Nome, e-mail …").
+  if (!nome) {
+    const r = recapitulacao(msgs) ?? '';
+    nome = limpoNome(r.match(/respons[aá]vel:\s*(.+?)(?=\s*(?:\n|;|,|\s-\s|e-?mail\b|$))/i)?.[1] ?? r.match(/(?:revisando|atualizando):\s*([^,\n]+),\s*e-?mail/i)?.[1]);
+  }
+  // Agendado (regra da equipe): o lead passou nome, e-mail e turno/turma. O horário exato não é exigido.
+  return { email, dia, horario, turno, nome, completo: Boolean(email && nome && (dia || turno)) };
 }
 
 // ---------- status ----------
@@ -135,7 +144,7 @@ export function classifyStatus(msgs, cfg = {}) {
     return { status: 'Não interagiu', motivo: 'lead só enviou a mensagem de origem', revisar: false, ag };
   }
   if (ag.completo) {
-    return { status: 'Agendado', motivo: 'e-mail, dia e horário presentes', revisar: false, ag };
+    return { status: 'Agendado', motivo: 'nome, e-mail e turno/turma informados', revisar: false, ag };
   }
 
   const padroes = (cfg.naoQuero?.padroes ?? []).map((p) => new RegExp(p, 'i'));
@@ -144,8 +153,8 @@ export function classifyStatus(msgs, cfg = {}) {
     return { status: 'Não quero', motivo: `Status "Não quero" sugerido pelo texto "${hit.text.replace(/\s+/g, ' ').slice(0, 60)}"; confirmar`, revisar: true, ag };
   }
 
-  const parcial = ag.email || ag.dia || ag.horario;
-  const faltam = [!ag.email && 'e-mail', !ag.dia && 'dia', !ag.horario && 'horário'].filter(Boolean);
+  const parcial = ag.email || ag.dia || ag.turno;
+  const faltam = [!ag.nome && 'nome', !ag.email && 'e-mail', !(ag.dia || ag.turno) && 'turno/turma'].filter(Boolean);
   // A planilha real mistura "Conversa Iniciada" e "1o/2o/3o interação". O padrão segue o passo a passo
   // (Conversa Iniciada); com status.interacao = "contagem" usa o número de respostas do lead.
   const contagem = cfg.status?.interacao === 'contagem';
@@ -363,6 +372,28 @@ export function detectBotErrors(msgs, cfg = {}) {
   return erros;
 }
 
+// ---------- contatos internos ----------
+
+const tokensNome = (n) => norm(n).split(/[^a-z0-9]+/).filter((t) => t.length >= 3);
+
+/**
+ * O contato é alguém da equipe? Compara com os atendentes cadastrados na Liv. Só vale atendente de nome composto
+ * (todas as palavras presentes no contato), para não descartar um lead que se chame apenas "Joana" ou "Caio".
+ */
+export function combinaComAtendente(nomeContato, atendentes = []) {
+  const c = new Set(tokensNome(nomeContato));
+  return atendentes.find((a) => {
+    const t = tokensNome(a.nome);
+    return t.length >= 2 && t.every((x) => c.has(x));
+  }) ?? null;
+}
+
+/** Nome que só PARECE interno (não descarta; avisa). */
+export function dicaDeContatoInterno(nome, cfg = {}) {
+  const padroes = cfg.ignorar?.dicasNome ?? ['fuctura', '\\bteste\\b'];
+  return padroes.some((p) => new RegExp(p, 'i').test(nome));
+}
+
 // ---------- linha final ----------
 
 /**
@@ -385,8 +416,8 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
     motivos.push(`Lead de formulário (confirmou aula gratuita): lançado como ${status}; a equipe usa Agendado na maioria e Conversa Iniciada em alguns`);
     revisar = true;
   }
-  if (status === 'Agendado' && st.status === 'Agendado' && cfg.avisoAgendadoPeloBot !== false) {
-    motivos.push('Agendado pelo bot (nome, e-mail, dia e horário); a equipe às vezes mantém Conversa Iniciada até confirmar com o lead');
+  if (status === 'Agendado' && st.status === 'Agendado' && cfg.avisoAgendadoPeloBot === true) {
+    motivos.push('Agendado pelo bot (nome, e-mail e turno/turma informados)');
     revisar = true;
   }
   if (ai?.status && ai.status !== status && ['Não quero', 'Agendado', 'Conversa Iniciada', 'Não interagiu'].includes(ai.status) && !/interação$/.test(status)) {
@@ -412,6 +443,14 @@ export function buildRow(lead, msgs, cfg = {}, ai = null) {
     }
   }
 
+  if (lead.homonimoDe) {
+    motivos.push(`Nome igual ao de ${lead.homonimoDe}; pode ser homônimo. Se for da equipe, acrescente o telefone em ignorar.telefones`);
+    revisar = true;
+  }
+  if (dicaDeContatoInterno(lead.nome, cfg)) {
+    motivos.push('Nome parece de contato interno (contém "Fuctura" ou "teste"); confirmar se conta como lead');
+    revisar = true;
+  }
   let planilha = origem.planilha ?? ai?.planilha ?? null;
   if (planilha && origem.fonte === 'padrão genérico' && norm(origem.prefixo ?? '') === 'form') {
     motivos.push(`Planilha ${planilha} assumida: lead de formulário sem pista de Adulto ou Kids`);
