@@ -318,5 +318,21 @@
     "alt_urls": [],
     "discovered_at": "2026-10-19T17:20:21+00:00",
     "status": "descoberta"
+  },
+  {
+    "source": "rss:weworkremotely.com",
+    "external_id": "https://weworkremotely.com/remote-jobs/vertex-marketing-group-distribution-engineer",
+    "title": "Distribution Engineer",
+    "company": "Vertex Marketing Group",
+    "location": "Anywhere in the World",
+    "work_mode": "remoto",
+    "salary_text": "",
+    "description": "Headquarters: Bulgaria URL: https://vertexmg.com Scale our distribution by code: a fleet of real devices, iPhones first and Android too, plus platform APIs and AI agents, posting across many accounts and surfaces. You work directly with the founder. Most content gets made and then dies at a few hundred views, because getting it out is still done by hand: a person, a phone, a few accounts. We want it engineered: iPhone and Android device automation at scale, platform APIs and agents posting across many accounts and surfaces, every link tracked. If you would rather build that fleet than tap through posts one at a time, read on. Vertex Marketing Group builds AI creators and makes the content for real ones. Your job is to get that content out at a volume no team could post by hand, and keep the machine running. You own the outcome. What you'll do • Build and run the device fleet that posts by code: iPhones first, Android too, real devices and cloud phones • Publish across Instagram, TikTok, X, Reddit and Threads through platform APIs plus device and browser automation, hundreds of posts a day • Automate account health and posting cadence: every account checked every morning by code, problems caught before they cost reach • Put agents to work on the pipeline: Claude Code and MCPs handling captions, scheduling, health checks and recovery • Track every link: which account, post and surface sent each click, and what it turned into Requirements • You have built and run posting automation across 100+ accounts, and you can show it running • You have automated iPhones or other iOS devices (and/or Android, cloud phones) that run unattended • You work with platform APIs plus browser and mobile automation, with queues and scheduling • You run pipelines with Claude Code, MCPs and agents • Clear written English at minimum, perfect is better. Based in Europe or Latin America Big plus: a development, infrastructure or DevOps background, and growth analytics: you read the numbers and know what to post more of. Compensation $4,000 to $6,000 per month, full-time, remote. Where you land in the range depends on what you show us. Same rate from day one of the paid test. Reviewed after 6 months. Why Vertex? • You own the outcome: your fleet, your numbers, your call on what goes out where • You work directly with the founder, in a small team of sharp people who are fun to work with • Content to distribute every day, and the budget for the devices and the stack • The mission: become one of the best in the world at this, fast, then package what we build for other agencies • Fast decisions. You'll know within 48 hours at every stage To apply: https://weworkremotely.com/remote-jobs/vertex-marketing-group-distribution-engineer",
+    "url": "https://weworkremotely.com/remote-jobs/vertex-marketing-group-distribution-engineer",
+    "published_at": "Tue, 20 Oct 2026 11:32:37 +0000",
+    "key": "c3a241a402c4aba7",
+    "alt_urls": [],
+    "discovered_at": "2026-10-20T15:33:35+00:00",
+    "status": "descoberta"
   }
 ]
