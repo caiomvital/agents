@@ -334,5 +334,21 @@
     "alt_urls": [],
     "discovered_at": "2026-10-20T15:33:35+00:00",
     "status": "descoberta"
+  },
+  {
+    "source": "rss:weworkremotely.com",
+    "external_id": "https://weworkremotely.com/remote-jobs/ritual-core-protocol-engineer",
+    "title": "Core Protocol Engineer",
+    "company": "Ritual",
+    "location": "Anywhere in the World",
+    "work_mode": "remoto",
+    "salary_text": "",
+    "description": "Headquarters: Remote About Ritual Ritual is building a sovereign, execution layer for AI, with our private testnet already live and running. The Ritual chain is the first blockchain custom-built to support AI-native operations, designed from the ground up to enable a new class of applications at the intersection of crypto and AI. Our first product, Infernet, is pioneering new ground as the first solution to enable developers to access AI models both on-chain via smart contracts and off-chain, demonstrating our commitment to bridging these transformative technologies. About the role We're seeking a Core Protocol Engineer with deep expertise with Ethereum execution clients to help us extend the EVM for next-generation compute capabilities. You'll work on expanding the execution layer to support novel precompiles, implement parallel execution patterns, and design systems for heterogeneous compute orchestration. Design and implement extensions to EVM clients (Geth/Reth) for supporting stateful precompiles Implement novel mechanism design primitives, collaborating with our research team, into the execution layer Develop and optimize transaction processing pipelines for heterogeneous workloads Research and implement solutions for state access conflicts Contribute to core protocol development and EIP implementations Collaborate with the research team on protocol specifications and mechanism design improvements Design and implement robust testing frameworks for execution client modifications About you Deep understanding of EVM internals and Ethereum execution clients (Geth/Reth) Strong experience implementing and optimizing precompiles Expertise in Go and/or Rust for systems programming, and Solidity Thorough knowledge of Ethereum's roadmap and active participation in protocol discussions Experience with parallel execution patterns in blockchain systems Strong understanding of consensus mechanisms and blockchain architecture Ability to read, understand, and implement EIPs and protocol specifications Proven track record of shipping production-grade blockchain systems Ability to act quickly under high pressure scenarios and context switch at a high frequency A high level of end-to-end ownership and self-direction, with excellent communication skills Hungry, high-energy and ability to work within and meet deadlines in a fast-paced environment Nice to have Knowledge of mempool dynamics, transaction ordering and the mev-boost implementation Background in mechanism design or market systems Deep knowledge of proof systems and their trade-offs around prover time, verifier time, and proof size Experience optimizing proof generation and verification pipelines Experience with cross-chain bridges or interoperability protocols Contributions to Ethereum client codebases Background in distributed systems and concurrent programming Why join us Join a passionate group of engineers, researchers, and operators on a mission to build the next generation of AI infrastructure Highly competitive compensation package, including annual discretionary bonus & optimized tax structure compared to the vast majority of web3 startups Top 1% of benefits across the web3 startup space 100% of premiums covered on highest quality healthcare Aggressive company 401k match Fully remote and/or hybrid, up to you! Participate in virtual and in-person events Much much more! To apply: https://weworkremotely.com/remote-jobs/ritual-core-protocol-engineer",
+    "url": "https://weworkremotely.com/remote-jobs/ritual-core-protocol-engineer",
+    "published_at": "Wed, 21 Oct 2026 07:31:25 +0000",
+    "key": "5e79063a308799ba",
+    "alt_urls": [],
+    "discovered_at": "2026-10-21T15:50:05+00:00",
+    "status": "descoberta"
   }
 ]
