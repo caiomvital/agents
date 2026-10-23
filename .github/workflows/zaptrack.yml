@@ -48,3 +48,4 @@ jobs:
         with:
           name: rascunho-zaptrack
           path: liv-zaptrack/out/rascunho.csv
+          retention-days: 7   # o CSV tem nomes e telefones de leads: não guardar por muito tempo
