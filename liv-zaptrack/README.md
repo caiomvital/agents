@@ -113,3 +113,16 @@ O CSV diário fica em `out/rascunho-AAAA-MM-DD.csv` (apagado após 7 dias) e o l
 - O CSV tem nomes e telefones de leads: a VPS deve ser privada, sem pasta compartilhada.
 - A Liv permite uma sessão por usuário. Com `LIV_ALLOW_SESSION_TAKEOVER=0` (padrão), se o usuário estiver logado o robô falha sem derrubar ninguém; o erro aparece no log.
 - A imagem não foi construída no ambiente de desenvolvimento (sem daemon Docker lá): faça o primeiro `docker compose build` e a execução de teste antes de agendar.
+
+### Sem Docker (usando o Node e o Chromium da própria VPS)
+
+```bash
+cd /opt/liv-zaptrack
+PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --omit=dev
+cp .env.example .env && chmod 600 .env && nano .env     # LIV_LOGIN, LIV_SENHA
+cp config.example.json config.json && chmod 600 config.json
+chmod +x deploy/run-diario-nativo.sh
+./deploy/run-diario-nativo.sh                            # teste manual; CSV em out/
+```
+Requer Node 20+ e um Chromium ou Chrome que não seja snap (o script avisa se for). Para agendar, use o mesmo
+`deploy/zaptrack.service`/`.timer`, trocando o `ExecStart` por `run-diario-nativo.sh`, ou o cron com esse script.
