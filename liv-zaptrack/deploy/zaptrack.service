@@ -1,0 +1,10 @@
+[Unit]
+Description=liv-zaptrack: gera o rascunho diário de leads
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# Ajuste o caminho para onde você colocou a pasta liv-zaptrack na VPS:
+WorkingDirectory=/opt/liv-zaptrack
+ExecStart=/opt/liv-zaptrack/deploy/run-diario.sh

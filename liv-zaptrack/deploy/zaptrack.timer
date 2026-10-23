@@ -1,0 +1,10 @@
+[Unit]
+Description=liv-zaptrack diário às 07:00 (Recife/Brasília)
+
+[Timer]
+OnCalendar=*-*-* 07:00:00 America/Recife
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

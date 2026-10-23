@@ -1,0 +1,14 @@
+# Uso:  docker compose run --rm zaptrack --por-aba --de 2026-10-22 --ate 2026-10-23
+# Sem argumentos extras o padrão abaixo (--por-aba) é aplicado.
+services:
+  zaptrack:
+    build: .
+    image: liv-zaptrack
+    env_file: .env                         # LIV_LOGIN, LIV_SENHA... (veja .env.example)
+    init: true
+    shm_size: "1gb"                        # o Chromium precisa de /dev/shm maior que o padrão
+    volumes:
+      - ./config.json:/app/config.json:ro  # telefones internos, prefixos, regras do bot
+      - ./out:/app/out                     # rascunhos gerados (CSV)
+      - ./planilha:/app/planilha:ro        # opcional: CSVs exportados das abas Adulto e Kids
+    command: ["--por-aba"]

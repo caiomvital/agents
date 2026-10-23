@@ -69,3 +69,47 @@ Testes: `npm test` (sem rede; usa conversas sintéticas).
 - Com `--ia`, nome e texto da conversa vão para o provedor de IA (telefone não, por padrão). Confirme se isso é aceitável (LGPD).
 - A leitura usa as mesmas URLs que a interface da Liv usa (`blank_ultimos_atendimentos`, `grid_chatbot_historico`).
   Se a Liv mudar as telas, o script pode quebrar; uma API/webhook oficial seria mais estável.
+
+## Rodar na sua VPS (Docker)
+
+Pré-requisitos: Docker com o plugin Compose, acesso de saída à internet e um usuário da Liv só para o robô.
+
+```bash
+# 1) Copie a pasta liv-zaptrack para a VPS (ex.: /opt/liv-zaptrack) e entre nela
+cd /opt/liv-zaptrack
+
+# 2) Credenciais e configuração (nenhum dos dois vai para o git)
+cp .env.example .env && chmod 600 .env        # preencha LIV_LOGIN e LIV_SENHA
+cp config.example.json config.json            # preencha ignorar.telefones, prefixos etc.
+
+# 3) Construa a imagem e teste uma vez
+docker compose build
+docker compose run --rm zaptrack --por-aba --de 2026-10-22 --ate 2026-10-23
+ls out/                                        # o CSV de rascunho aparece aqui
+```
+
+Para pular quem já foi lançado, exporte as abas Adulto e Kids da planilha como CSV e coloque em `./planilha/`.
+O script `deploy/run-diario.sh` usa esses arquivos automaticamente.
+
+### Agendar (escolha um)
+
+**systemd timer** (recomendado: roda mesmo se a VPS estiver desligada no horário):
+```bash
+sudo cp deploy/zaptrack.service deploy/zaptrack.timer /etc/systemd/system/   # ajuste WorkingDirectory/ExecStart
+sudo systemctl daemon-reload && sudo systemctl enable --now zaptrack.timer
+systemctl list-timers zaptrack.timer           # confere o próximo disparo
+journalctl -u zaptrack.service -n 50           # saída da última execução
+```
+
+**cron** (07:00 de Recife/Brasília = 10:00 UTC):
+```
+0 10 * * *  /opt/liv-zaptrack/deploy/run-diario.sh
+```
+
+O CSV diário fica em `out/rascunho-AAAA-MM-DD.csv` (apagado após 7 dias) e o log em `logs/` (30 dias).
+
+### Cuidados
+- O `.env` e o `config.json` têm credenciais e telefones: permissão 600 e só o usuário do robô lê.
+- O CSV tem nomes e telefones de leads: a VPS deve ser privada, sem pasta compartilhada.
+- A Liv permite uma sessão por usuário. Com `LIV_ALLOW_SESSION_TAKEOVER=0` (padrão), se o usuário estiver logado o robô falha sem derrubar ninguém; o erro aparece no log.
+- A imagem não foi construída no ambiente de desenvolvimento (sem daemon Docker lá): faça o primeiro `docker compose build` e a execução de teste antes de agendar.
