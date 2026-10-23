@@ -77,7 +77,7 @@ const liv = await connect({
 
 try {
   const ids = { idCliente: cfg.liv?.idCliente ?? liv.ids?.idCliente, idInstancias: cfg.liv?.idInstancias ?? liv.ids?.idInstancias };
-  if (!ids.idCliente || !ids.idInstancias) throw new Error('Não consegui descobrir idCliente/idInstancias; informe em config.json (liv).');
+  if (!ids.idCliente || !ids.idInstancias) throw new Error('Não consegui descobrir idCliente/idInstancias (usuário de atendente cai na tela de chat). Preencha liv.idCliente e liv.idInstancias no config.json, ex.: "83" e "16,114,17,119".');
   log(`Cliente ${ids.idCliente}, canais ${ids.idInstancias}`);
 
   let leads = [];

@@ -2,9 +2,9 @@
   "_comentario": "Copie para config.json e ajuste. Itens marcados PREENCHER dependem de informação que ainda não temos.",
   "liv": {
     "baseUrl": "https://chat.livtecnologia.com",
-    "idCliente": null,
-    "idInstancias": null,
-    "_nota": "Se null, o script descobre idCliente e canais sozinho a partir do dashboard pós-login."
+    "idCliente": "83",
+    "idInstancias": "16,114,17,119",
+    "_nota": "Cliente e canais da Fuctura na Liv (83; canais 16, 114, 17, 119). Usuários de atendente caem direto na tela de chat e o robô não consegue descobrir isso sozinho. Administradores podem deixar null para descobrir automaticamente."
   },
   "origens": {
     "_nota": "Mapa conforme a planilha da equipe: RM*/Rml, RC07 e RC12 = Adulto; RC05/RC08/RC09, K1 e K2 = Kids. Genéricos (Fb., Sb., Pr., SF, Bb., Ff., Form, Ia., Wz.) usam palavras-chave e, sem pista de Kids, caem em padraoGenerico. Use * como curinga.",
