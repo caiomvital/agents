@@ -35,8 +35,11 @@ jobs:
           LIV_ALLOW_SESSION_TAKEOVER: "0"
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ZAPTRACK_CONFIG_JSON: ${{ secrets.ZAPTRACK_CONFIG_JSON }}
         run: |
-          cp config.example.json config.json
+          # config.json tem telefones da equipe e não vai para o repositório: guarde o conteúdo no segredo
+          # ZAPTRACK_CONFIG_JSON. Sem o segredo, usa o exemplo (sem lista de telefones internos).
+          if [ -n "$ZAPTRACK_CONFIG_JSON" ]; then printf '%s' "$ZAPTRACK_CONFIG_JSON" > config.json; else cp config.example.json config.json; fi
           ARGS=""
           [ -n "${{ inputs.de }}" ] && ARGS="$ARGS --de ${{ inputs.de }}"
           [ -n "${{ inputs.ate }}" ] && ARGS="$ARGS --ate ${{ inputs.ate }}"
