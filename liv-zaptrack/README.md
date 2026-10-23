@@ -91,6 +91,15 @@ ls out/                                        # o CSV de rascunho aparece aqui
 Para pular quem já foi lançado, exporte as abas Adulto e Kids da planilha como CSV e coloque em `./planilha/`.
 O script `deploy/run-diario.sh` usa esses arquivos automaticamente.
 
+### Permissões (uma vez, como root)
+
+O contêiner roda sem privilégios. Se o teste falhar com `EACCES: permission denied, open 'config.json'`, entregue os
+arquivos ao usuário do contêiner:
+```bash
+./deploy/preparar-permissoes.sh
+```
+(descobre o uid do contêiner e faz `chown` no `config.json`, em `out/` e em `planilha/`, mantendo `config.json` em 600).
+
 ### Agendar (escolha um)
 
 **systemd timer** (recomendado: roda mesmo se a VPS estiver desligada no horário):
