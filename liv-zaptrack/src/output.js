@@ -3,8 +3,8 @@ import { dirname } from 'node:path';
 
 // Colunas na ordem da planilha (A..H), seguidas de colunas auxiliares para conferência humana.
 export const COLUNAS_PLANILHA = ['data', 'qualificacao', 'status', 'nome', 'fone', 'frase', 'email', 'resumo'];
-export const COLUNAS_AUX = ['conferir', 'errosBot', 'filho', 'nomeSugerido', 'planilha', 'tipoOrigem', 'genero', 'generoFonte', 'generoConfianca', 'protocolo', 'chegada', 'canal', 'statusLiv'];
-export const CABECALHO = ['Data', 'Qualificação', 'Status', 'Nome', 'Fone', 'Frase', 'E-mail', 'Resumo', 'Conferir', 'Erros do Bot', 'Filho', 'Nome sugerido', 'Planilha', 'Origem', 'Gênero', 'Fonte gênero', 'Confiança gênero', 'Protocolo', 'Chegada', 'Canal', 'Status Liv'];
+export const COLUNAS_AUX = ['conferir', 'errosBot', 'resumoIA', 'filho', 'nomeSugerido', 'planilha', 'tipoOrigem', 'genero', 'generoFonte', 'generoConfianca', 'protocolo', 'chegada', 'canal', 'statusLiv'];
+export const CABECALHO = ['Data', 'Qualificação', 'Status', 'Nome', 'Fone', 'Frase', 'E-mail', 'Resumo', 'Conferir', 'Erros do Bot', 'Resumo IA', 'Filho', 'Nome sugerido', 'Planilha', 'Origem', 'Gênero', 'Fonte gênero', 'Confiança gênero', 'Protocolo', 'Chegada', 'Canal', 'Status Liv'];
 
 const esc = (v) => {
   const s = String(v ?? '');
@@ -36,8 +36,8 @@ export function porAba(linhas) {
   const kids = [];
   const indefinidas = [];
   for (const l of linhas) {
-    if (l.planilha === 'Kids') kids.push([l.data, l.qualificacao, l.status, l.nome, l.fone, l.filho ?? '', l.frase, l.email, '', '', '', '', '', l.resumo]);
-    else if (l.planilha === 'Adulto') adulto.push([l.data, l.qualificacao, l.status, l.nome, l.fone, l.frase, l.email, l.resumo]);
+    if (l.planilha === 'Kids') kids.push([l.data, l.qualificacao, l.status, l.nome, l.fone, l.filho ?? '', l.frase, l.email, '', '', '', '', '', l.resumoIA || l.resumo]);
+    else if (l.planilha === 'Adulto') adulto.push([l.data, l.qualificacao, l.status, l.nome, l.fone, l.frase, l.email, l.resumoIA || l.resumo]);
     else indefinidas.push(l);
   }
   return { adulto, kids, indefinidas };

@@ -397,3 +397,64 @@ test('homônimo de atendente: não descarta, avisa para conferir e orienta usar 
   assert.match(r.conferir, /Nome igual ao de atendente "Maria Souza" da Liv; pode ser homônimo/);
   assert.match(r.conferir, /ignorar\.telefones/);
 });
+
+// ---------- resumo para o vendedor ----------
+import { resumirConversa, redigir, limitar, ultimoContato, resumoDeterministico } from '../src/resumo.js';
+
+const agoraFixa = new Date('2026-10-16T15:00:00Z');
+const conversa = [
+  lead('Olá! Quero saber mais sobre o curso de Java', '13/10/2026 10:00:00'),
+  { role: 'bot', autor: 'Bot', at: '13/10/2026 10:00:05', text: 'Oi! Qual curso?' },
+  lead('Quanto custa? meu email é joao@x.com e fone 81 99999-8888', '13/10/2026 10:01:00'),
+];
+const fakeFetch = (texto, status = 200, captura = []) => async (url, init) => {
+  captura.push(JSON.parse(init.body));
+  return { ok: status === 200, status, json: async () => ({ content: [{ type: 'text', text: texto }], usage: { input_tokens: 10, output_tokens: 5 } }), text: async () => 'erro' };
+};
+
+test('resumo: último contato em dias', () => {
+  assert.equal(ultimoContato(conversa, agoraFixa).frase, 'há 3 dias');
+  assert.equal(ultimoContato(conversa, new Date('2026-10-13T15:00:00Z')).frase, 'hoje');
+});
+
+test('resumo: mascara e-mail e telefone mas preserva datas e horários', () => {
+  const r = redigir('joao@x.com 81 99999-8888 dia 13/10/2026 às 19:00 ou 8h30');
+  assert.ok(!r.includes('joao@') && !r.includes('99999'));
+  assert.ok(r.includes('13/10/2026') && r.includes('19:00') && r.includes('8h30'));
+});
+
+test('resumo: limitar respeita 500 e corta em fim de frase', () => {
+  const t = 'Frase um é curta. '.repeat(60);
+  const r = limitar(t, 500);
+  assert.ok(r.length <= 500 && r.endsWith('.'));
+  assert.equal(limitar('**negrito** ok'), 'negrito ok');
+});
+
+test('resumo: lead sem interação não chama a API', async () => {
+  const r = await resumirConversa({ msgs: [conversa[0]], linha: { planilha: 'Adulto' }, agora: agoraFixa, fetchImpl: () => { throw new Error('não deveria chamar'); } });
+  assert.equal(r.fonte, 'regra');
+  assert.ok(r.texto.includes('Próxima ação:') && r.texto.includes('há 3 dias') && r.texto.length <= 500);
+});
+
+test('resumo: chama a API sem vazar e-mail/telefone e usa o modelo pedido', async () => {
+  const cap = [];
+  const r = await resumirConversa({ msgs: conversa, agora: agoraFixa, apiKey: 'k', fetchImpl: fakeFetch('Interessado em Java. Último contato há 3 dias. Próxima ação: responder valores.', 200, cap) });
+  assert.equal(r.fonte, 'ia');
+  assert.equal(cap[0].model, 'claude-sonnet-5-5');
+  const enviado = JSON.stringify(cap[0]);
+  assert.ok(!enviado.includes('joao@x.com') && !enviado.includes('99999-8888'));
+  assert.ok(enviado.includes('Último contato há 3 dias'));
+});
+
+test('resumo: resposta longa é reduzida a 500; erro 401 não é repetido', async () => {
+  const longo = 'Interessado em Java e quer saber tudo. '.repeat(30) + 'Próxima ação: ligar.';
+  const r = await resumirConversa({ msgs: conversa, agora: agoraFixa, apiKey: 'k', esperaMs: 1, fetchImpl: fakeFetch(longo) });
+  assert.ok(r.texto.length <= 500);
+  let n = 0;
+  await assert.rejects(resumirConversa({ msgs: conversa, apiKey: 'k', esperaMs: 1, fetchImpl: async () => (n++, { ok: false, status: 401, text: async () => 'x' }) }), /401/);
+  assert.equal(n, 1);
+});
+
+test('resumo: sem chave levanta erro claro', async () => {
+  await assert.rejects(resumirConversa({ msgs: conversa }), /ANTHROPIC_API_KEY/);
+});

@@ -135,3 +135,19 @@ chmod +x deploy/run-diario-nativo.sh
 ```
 Requer Node 20+ e um Chromium ou Chrome que não seja snap (o script avisa se for). Para agendar, use o mesmo
 `deploy/zaptrack.service`/`.timer`, trocando o `ExecStart` por `run-diario-nativo.sh`, ou o cron com esse script.
+
+## Resumo da conversa para o vendedor (`--resumo`)
+
+Gera, para cada lead, um texto de até 500 caracteres (coluna **Resumo IA**) com: interesse, o que o lead perguntou, o que foi oferecido/decidido, "Último contato há N dias" e "Próxima ação:". Usa a API da Anthropic (modelo `claude-sonnet-5-5`).
+
+```bash
+# .env: ANTHROPIC_API_KEY=sk-ant-...
+docker compose build
+docker compose run --rm zaptrack --por-aba --resumo --de 2026-10-13 --ate 2026-10-15
+```
+
+- No CSV principal o resumo vai em "Resumo IA"; nos CSVs `--por-aba` ele ocupa a coluna Resumo (H no Adulto, N no Kids) no lugar do resumo por regras.
+- Leads que só clicaram no anúncio (sem resposta ao bot) recebem um texto fixo, sem chamar a API (sem custo).
+- O "último contato" é calculado pelo código (data da última mensagem do lead), não pelo modelo.
+- Privacidade (LGPD): o texto das conversas é enviado à Anthropic. E-mails e telefones são mascarados antes do envio; o nome e o telefone do contato não são enviados, mas nomes citados dentro da conversa seguem no texto.
+- Falha em uma conversa não interrompe a execução (a célula fica vazia e o erro vai para o log). Ajustes em `config.json` → bloco `resumo` (veja `config.example.json`); `ANTHROPIC_MODEL_RESUMO` troca o modelo.

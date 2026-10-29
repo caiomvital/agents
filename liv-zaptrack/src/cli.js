@@ -7,6 +7,7 @@ import { parseArgs } from 'node:util';
 import { connect, listarProtocolosDoDia, mapearProtocolos, lerConversa, listarAtendentes } from './liv.js';
 import { buildRow, combinaComAtendente } from './rules.js';
 import { classificarComIA } from './ai.js';
+import { resumirConversa } from './resumo.js';
 import { diasEntre, hojeISO, somaDias } from './dates.js';
 import { phoneKey } from './rules.js';
 import { chaveDoLead, chavesExistentes, lerCSVs, ultimaData, tokenGoogle, lerAbaGoogle, registrosDaPlanilha, anexarRascunho } from './sheet.js';
@@ -21,6 +22,7 @@ const { values: a } = parseArgs({
     'planilha-google': { type: 'boolean', default: false },
     'escrever-rascunho': { type: 'boolean', default: false },
     ia: { type: 'boolean', default: false },
+    resumo: { type: 'boolean', default: false },
     'sem-dedupe': { type: 'boolean', default: false },
     'por-aba': { type: 'boolean', default: false },
     saida: { type: 'string' },
@@ -35,6 +37,7 @@ if (a.ajuda) {
   --planilha-google                    lê as abas pelo Google Sheets (GOOGLE_SERVICE_ACCOUNT_JSON + planilha.sheetId)
   --escrever-rascunho                  anexa o resultado na aba de rascunho (nunca em Adulto/Kids)
   --ia                                 usa a API da Anthropic (ANTHROPIC_API_KEY) nos casos difíceis
+  --resumo                             gera o resumo da conversa para o vendedor (até 500 caracteres) com a API da Anthropic
   --sem-dedupe                         não descarta leads que já estão na planilha
   --por-aba                            também grava CSVs no layout das abas Adulto e Kids (colunas A..H / A..N)
   --saida caminho.csv                  arquivo de saída (padrão: out/rascunho-<de>_<ate>.csv)`);
@@ -118,6 +121,7 @@ try {
   const mapa = await mapearProtocolos(liv.page, baseUrl, leads.map((l) => l.protocolo), { log });
 
   const linhas = [];
+  let tokens = { entrada: 0, saida: 0 };
   for (const lead of leads) {
     const id = mapa.get(lead.protocolo);
     if (!id) {
@@ -134,9 +138,30 @@ try {
         log(`IA falhou em ${lead.protocolo}: ${e.message}`);
       }
     }
-    linhas.push(buildRow(lead, msgs, cfg, ai));
+    const linha = buildRow(lead, msgs, cfg, ai);
+    if (a.resumo || cfg.resumo?.ativo) {
+      try {
+        const r = await resumirConversa({
+          lead,
+          msgs,
+          linha,
+          apiKey: process.env.ANTHROPIC_API_KEY,
+          modelo: process.env.ANTHROPIC_MODEL_RESUMO || cfg.resumo?.modelo,
+          maxCaracteres: cfg.resumo?.maxCaracteres,
+          maxTokens: cfg.resumo?.maxTokens,
+          apenasComInteracao: cfg.resumo?.apenasComInteracao,
+        });
+        linha.resumoIA = r.texto;
+        if (r.fonte === 'ia') tokens = { entrada: tokens.entrada + r.entrada, saida: tokens.saida + r.saida };
+      } catch (e) {
+        log(`Resumo falhou em ${lead.protocolo}: ${e.message}`);
+        linha.resumoIA = '';
+      }
+    }
+    linhas.push(linha);
   }
 
+  if (tokens.entrada) log(`Resumo IA: ${tokens.entrada} tokens de entrada, ${tokens.saida} de saída.`);
   const saida = a.saida ?? `out/rascunho-${de}_${ate}.csv`;
   gravar(saida, paraCSV(linhas));
   const rev = linhas.filter((l) => l.revisar).length;

@@ -87,6 +87,13 @@
     "maxTokens": 600,
     "enviarTelefone": false
   },
+  "resumo": {
+    "ativo": false,
+    "modelo": "claude-sonnet-5-5",
+    "maxCaracteres": 500,
+    "maxTokens": 300,
+    "apenasComInteracao": true
+  },
   "status": {
     "_nota": "A planilha mistura 'Conversa Iniciada' e '1o/2o/3o interação'. 'conversa_iniciada' segue o passo a passo; 'contagem' usa o nº de respostas do lead.",
     "interacao": "conversa_iniciada"
