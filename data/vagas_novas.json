@@ -494,5 +494,21 @@
     "alt_urls": [],
     "discovered_at": "2026-11-02T20:37:48+00:00",
     "status": "descoberta"
+  },
+  {
+    "source": "rss:weworkremotely.com",
+    "external_id": "https://weworkremotely.com/remote-jobs/mindrift-freelance-mechanical-cfd-engineer-ai-trainer",
+    "title": "Freelance Mechanical CFD Engineer - AI Trainer",
+    "company": "Mindrift",
+    "location": "Latin America Only",
+    "work_mode": "remoto",
+    "salary_text": "",
+    "description": "Headquarters: Peru URL: https://jobs.workable.com/company/r7muFeAbcksMFWASJu45jA/jobs-at-mindrift About the role Help train and evaluate AI agents on expert-level fluid simulation tasks. You'll take CAD geometry, set up and run simulations, build verified reference solutions, and write Python checks for the agent's results. Requirements A degree in Mechanical or Aerospace Engineering, or a related field such as energy or oil & gas. A PhD is preferred but not required. Several years of hands-on industry or research CFD with OpenFOAM, ANSYS Fluent/CFX or STAR-CCM+, including meshing. Solid verification and validation practice: mesh-independence studies, and validation against experiment or benchmarks. Comfortable with Python and GitHub. English at B2 level or above. Nice to have: aerospace, automotive, offshore or turbomachinery background; multiphase or particle-laden flow experience. Project time expectations For this project, tasks are estimated to require around 10–20 hours per week during active phases, based on project requirements. This is an estimate, not a guaranteed workload, and applies only while the project is active. Compensation On this project, contributors can earn up to $14 per hour equivalent, depending on their level and pace of contribution. Compensation varies across projects depending on scope, complexity, and required expertise. Please note that other projects on the platform may offer different earning levels based on their requirements. Why this freelance opportunity might be a great fit for you? Work fully remote on your own schedule with just a laptop and stable internet connection. Apply your expertise to real-world technology projects while gaining experience building high-quality solutions for a global platform. Participate in performance-based bonus programs that reward high-quality work and consistent delivery. To apply: https://weworkremotely.com/remote-jobs/mindrift-freelance-mechanical-cfd-engineer-ai-trainer",
+    "url": "https://weworkremotely.com/remote-jobs/mindrift-freelance-mechanical-cfd-engineer-ai-trainer",
+    "published_at": "Fri, 06 Nov 2026 04:12:21 +0000",
+    "key": "bc280a20dda582d6",
+    "alt_urls": [],
+    "discovered_at": "2026-11-06T17:48:26+00:00",
+    "status": "descoberta"
   }
 ]
