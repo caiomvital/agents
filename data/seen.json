@@ -300,5 +300,41 @@
   ],
   "title": "Developer Success Engineer, P2",
   "company": "Twilio"
+ },
+ "d86011baf85b7ac2": {
+  "urls": [
+   "https://weworkremotely.com/remote-jobs/gitlab-backend-engineer-ruby-plan-spec-driven-development-1",
+   "https://weworkremotely.com/remote-jobs/gitlab-backend-engineer-ruby-plan-spec-driven-development"
+  ],
+  "title": "Backend Engineer (Ruby), Plan: Spec-Driven Development",
+  "company": "GitLab"
+ },
+ "5ae91c9fbea2bdfd": {
+  "urls": [
+   "https://weworkremotely.com/remote-jobs/gitlab-backend-engineer-ruby-ai-engineering-ai-catalog"
+  ],
+  "title": "Backend Engineer (Ruby), AI Engineering: AI Catalog",
+  "company": "GitLab"
+ },
+ "a3659e75c6ef4978": {
+  "urls": [
+   "https://weworkremotely.com/remote-jobs/gitlab-backend-engineer-python-ai-engineering-agent-foundations"
+  ],
+  "title": "Backend Engineer (Python),AI Engineering: Agent Foundations",
+  "company": "GitLab"
+ },
+ "20cfcf3681b6a57c": {
+  "urls": [
+   "https://weworkremotely.com/remote-jobs/tailscale-billing-engineer"
+  ],
+  "title": "Billing Engineer",
+  "company": "Tailscale"
+ },
+ "d57b9414cfeb2f94": {
+  "urls": [
+   "https://weworkremotely.com/remote-jobs/ritual-machine-learning-engineer"
+  ],
+  "title": "Machine Learning Engineer",
+  "company": "Ritual"
  }
 }
